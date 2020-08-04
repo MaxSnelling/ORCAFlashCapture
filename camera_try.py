@@ -973,7 +973,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
         self.number_image_buffers = 2
         paramrec = DCAMREC_OPEN(0, 0, None, None, None, 0, 0, 0, 0, 0, 0, 0)
         paramrec.size = ctypes.sizeof(paramrec)
-        paramrec.path = ctypes.c_wchar_p("D:\Data\ProvaRec\ProvaIm36")
+        paramrec.path = ctypes.c_wchar_p("C:\Data\ProvaRec\ProvaIm36")
         paramrec.ext = ctypes.c_wchar_p("dcimg")
         paramrec.maxframepersession = 10
         print(dcam.dcamrec_openW(ctypes.byref(paramrec)))
