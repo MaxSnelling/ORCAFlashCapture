@@ -1,20 +1,14 @@
-"""Single Atom Image Analysis
-Stefan Spence 26/02/19
-
- - watch the image_read_path directory for new images
- - save the new image with label into a dated subdirectory under image_storage_path
- - delete the original file so that a new file with the same name can be created
- - set an ROI on the image and take an integrated count from the pixels
- - determine atom presence by comparison with a threshold count
- - plot a histogram of signal counts, which defines the threshold
- - save file references to easily re-analyse data
-
-Assume that there are two peaks in the histogram 
-Assume that image files are ASCII
-
-Use Qt to send the signal from the watchdog to a real-time plot
 """
-__version__ = '2.2'
+ORCAFlashCapture
+Max Snelling
+
+Based heavily off Stefan Spence's Single Atom Image Analysis.
+https://github.com/ssquantum/saia
+
+With the addition of adding image capture of Hamamatsu ORCA-Flash 4.0 CMOS
+Camera. Connection to camera is done using
+https://github.com/micropolimi/HamamatsuCamera
+"""
 import os
 import sys
 import time
@@ -41,6 +35,7 @@ import imageHandler as ih # process images to build up a histogram
 import histoHandler as hh # collect data from histograms together
 import directoryWatcher as dw # use watchdog to get file creation events
 import fitCurve as fc   # custom class to get best fit parameters using curve_fit
+import camera_try
 ####    ####    ####    ####
 
 # main GUI window contains all the widgets                
@@ -86,9 +81,26 @@ class main_window(QMainWindow):
         self.init_UI(config_file)  # make the widgets
         self.init_DW(pop_up)  # ask the user if they want to start the dir watcher
         self.init_log() # write header to the log file that collects histograms
+        self.initCamera() # makes the connection to the connected camera
         self.t0 = time.time()  # time of initiation
         self.int_time = 0      # time taken to process an image
         self.plot_time = 0     # time taken to plot the graph
+        self.initCamera()
+        
+    def initCamera(self):
+        dcam = ctypes.windll.dcamapi
+        print(dcam)
+        paraminit = camera_try.DCAMAPI_INIT(0, 0, 0, 0, None, None) 
+        paraminit.size = ctypes.sizeof(paraminit)
+        error_code = dcam.dcamapi_init(ctypes.byref(paraminit))
+        if (error_code != camera_try.DCAMERR_NOERROR):
+            raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
+        
+        n_cameras = paraminit.iDeviceCount    
+        print("found: {} cameras".format(n_cameras))
+        hcam = camera_try.HamamatsuCameraMR(camera_id = 0)
+        print("camera 0 model:", hcam.getModelInfo(0))
+        return hcam
 
     def init_log(self):
         """Create a directory for today's date as a subdirectory in the log file path
