@@ -65,7 +65,7 @@ class image_handler:
         self.xc = 0                     # ROI centre x position 
         self.yc = 0                     # ROI centre y position
         self.roi_size =  1              # ROI length in pixels. default 1 takes top left pixel
-        self.pic_size = 512             # number of pixels in an image
+        self.pic_size = 10             # number of pixels in an image
         self.thresh = 1                 # initial threshold for atom detection
         self.im_num = 0                 # number of images processed
         self.im_vals = np.array([])     # the data from the last image is accessible to an image_handler instance
@@ -92,7 +92,9 @@ class image_handler:
         
     def load_full_im(self, im_name):
         """return an array with the values of the image"""
-        return np.loadtxt(im_name, delimiter=self.delim,
+        print(im_name)
+        print(self.pic_size)
+        return np.loadtxt(im_name, delimiter=None,
                               usecols=range(1,self.pic_size+1))
         
     def process(self, im_name):

@@ -30,13 +30,11 @@ class system_event_handler(FileSystemEventHandler, QThread):
     to the file as a signal"""
     event_path = pyqtSignal(str)
     
-    def __init__(self, image_storage_path, dexter_sync_file_name, date):
+    def __init__(self, image_storage_path, date):
         super().__init__()
         
-        self.dfn = ""    # dexter file number
         self.last_event_path = ""   # last event processed 
         self.image_storage_path = image_storage_path  # directory where we copy images to
-        self.dexter_sync_file_name = dexter_sync_file_name # path to file where dexter syncs its file #
         self.date = date # today's date
         self.init_t = time.time()  # time of initiation: use to test how long it takes to realise an event is started
         self.event_t = 0           # time taken to process the last event
@@ -52,24 +50,7 @@ class system_event_handler(FileSystemEventHandler, QThread):
         last_file_size = -1
         while last_file_size != os.path.getsize(file_name): 
             last_file_size = os.path.getsize(file_name)
-            time.sleep(dt) # deliberately add pause so we don't loop too many times
-            
-    def sync_dexter(self, dt=1e-3):
-        """Get the Dexter file number from the dexter_sync_file_name file
-        Check if the file is empty (usually means it's being written)
-        and wait until it's finished being written to"""
-        new_dfn = '' # sometimes Dexter hasn't finished writing to file, we should wait til it has.
-        while new_dfn == '': # note: this usually takes about 10 ms.
-            with open(self.dexter_sync_file_name, 'r') as sync_file:
-                new_dfn = sync_file.read()
-            if new_dfn != '':
-                if self.dfn != str(int(new_dfn)):
-                    self.dfn = str(int(new_dfn))
-                else: # sometimes Dexter hasn't updated the file number yet
-                    self.dfn = str(int(new_dfn)+1)
-                break
-            time.sleep(dt) # deliberately add pause so we don't loop too many times
-    
+            time.sleep(dt) # deliberately add pause so we don't loop too many times    
     
     def on_created(self, event):
         """On a new image being written, save the file with a synced label into the 
@@ -78,15 +59,12 @@ class system_event_handler(FileSystemEventHandler, QThread):
         self.idle_t = t0 - self.end_t # duration between end of last event and start of current event
         self.wait_for_file(event.src_path) # wait until file has been written        
         self.write_t = time.time() - t0
-        # get Dexter file number  
-        self.sync_dexter()
-        # copy file with labeling: [date]_[Dexter file #]
         new_file_name = os.path.join(self.image_storage_path,
-                self.date+'_'+self.dfn+'.'+event.src_path.split(".")[-1])
+                self.date+event.src_path.split(".")[-1])
         self.copy_t = time.time()
         if os.path.isfile(new_file_name): # don't overwrite files
             new_file_name = os.path.join(self.image_storage_path, 
-                self.date+'_'+self.dfn+'_'+str(self.nfn)+'.'+event.src_path.split(".")[-1])
+                self.date+'_'+str(self.nfn)+'.'+event.src_path.split(".")[-1])
             self.nfn += 1 # always a unique number
         try:
             shutil.copyfile(event.src_path, new_file_name)
@@ -116,9 +94,9 @@ class silent_event_handler(system_event_handler):
     files, merely emit the event path."""
     event_path = pyqtSignal(str)
     
-    def __init__(self, image_storage_path, dexter_sync_file_name, date):
+    def __init__(self, image_storage_path, date):
         # same init as the base system event handler
-        system_event_handler.__init__(self, image_storage_path, dexter_sync_file_name, date)   
+        system_event_handler.__init__(self, image_storage_path, date)   
 
     def on_created(self, event):
         """On a new image being written, save the file with a synced label into the 
@@ -149,7 +127,6 @@ class dir_watcher(QThread):
     image_storage_path    -- directory that new images will 
         be written to.
     log_file_path         -- directory to save log files to.
-    dexter_sync_file_name -- absolute path to DExTer currentfile.txt
     image_read_path       -- directory that new image creation
         events will occur in.
     results_path          -- directory for results to be stored in
@@ -160,7 +137,6 @@ class dir_watcher(QThread):
         self.dirs_dict = self.get_dirs(config_file)  # handy dict contains them all
         self.image_storage_path = self.dirs_dict['Image Storage Path: ']
         self.log_file_path = self.dirs_dict['Log File Path: ']
-        self.dexter_sync_file_name = self.dirs_dict['Dexter Sync File: ']
         self.image_read_path = self.dirs_dict['Image Read Path: ']
         self.results_path = self.dirs_dict['Results Path: ']
         if self.image_storage_path: # =0 if get_dirs couldn't find config.dat, else continue
@@ -171,10 +147,10 @@ class dir_watcher(QThread):
             self.image_storage_path += r'\%s\%s\%s'%(self.date[3],self.date[2],self.date[0])
             if active: # active event handler copies then deletes new files
                 self.event_handler = system_event_handler(self.image_storage_path, 
-                                self.dexter_sync_file_name, self.date[0]+self.date[1]+self.date[3])
+                                                          self.date[0]+self.date[1]+self.date[3])
             else: # passive event handler just emits the event path
                 self.event_handler = silent_event_handler(self.image_storage_path, 
-                                self.dexter_sync_file_name, self.date[0]+self.date[1]+self.date[3])
+                                                          self.date[0]+self.date[1]+self.date[3])
             # create image storage directory by date if it doesn't already exist
             os.makedirs(self.image_storage_path, exist_ok=True) # requies version > 3.2
             # initiate observer, don't recursively search directories within the image_read_path
@@ -191,26 +167,20 @@ class dir_watcher(QThread):
                 config_data = config_file.read().split("\n")
         except FileNotFoundError:
             print("config.dat file not found. This file is required for directory references.")
-            return {'Image Storage Path: ':'', 'Log File Path: ':'', 'Dexter Sync File: ':'', 
-                    'Image Read Path: ':'', 'Results Path: ':''}
+            return {'Image Storage Path: ':'', 'Log File Path: ':'', 'Image Read Path: ':'', 'Results Path: ':''}
                 
         for row in config_data:
             if "image storage path" in row:
                 image_storage_path = row.split('--')[-1] # where image files are saved
             elif "log file path" in row:
                 log_file_path = row.split('--')[-1]      # where dat files of saved data and log files are saved
-            elif "dexter sync file" in row:
-                dexter_sync_file_name = row.split('--')[-1]   # where the txt from Dexter with the latest file # is saved
             elif "image read path" in row:
                 image_read_path = row.split('--')[-1]    # where camera images are stored just after acquisition
             elif "results path" in row:
                 results_path = row.split('--')[-1]       # default folder to save histogram csv files to
                 
-        if os.path.split(dexter_sync_file_name)[0] == image_read_path:
-            print("WARNING: The directory watcher acts on all file change events, so the Dexter sync file path and image read path must be different.")
         return {'Image Storage Path: ':image_storage_path, 'Log File Path: ':log_file_path, 
-                'Dexter Sync File: ':dexter_sync_file_name, 'Image Read Path: ':image_read_path, 
-                'Results Path: ':results_path}
+                'Image Read Path: ':image_read_path, 'Results Path: ':results_path}
         
     @staticmethod
     def print_dirs(dict_items):

@@ -23,7 +23,7 @@ try:
             QDoubleValidator, QIntValidator, QComboBox, QMenu, QActionGroup, 
             QTabWidget, QVBoxLayout, QFont, QInputDialog, QRegExpValidator) 
 except ModuleNotFoundError:
-    from PyQt5.QtCore import QThread, pyqtSignal, QEvent, QRegExp
+    from PyQt5.QtCore import QThread, pyqtSignal, QEvent, QRegExp, Qt
     from PyQt5.QtGui import (QGridLayout, QMessageBox, QLineEdit, QIcon, 
             QFileDialog, QDoubleValidator, QIntValidator, QComboBox, QMenu, 
             QActionGroup, QVBoxLayout, QFont, QRegExpValidator)
@@ -36,6 +36,8 @@ import histoHandler as hh # collect data from histograms together
 import directoryWatcher as dw # use watchdog to get file creation events
 import fitCurve as fc   # custom class to get best fit parameters using curve_fit
 import camera_try
+import ctypes
+import ctypes.util
 ####    ####    ####    ####
 
 # main GUI window contains all the widgets                
@@ -81,11 +83,10 @@ class main_window(QMainWindow):
         self.init_UI(config_file)  # make the widgets
         self.init_DW(pop_up)  # ask the user if they want to start the dir watcher
         self.init_log() # write header to the log file that collects histograms
-        self.initCamera() # makes the connection to the connected camera
+        #self.initCamera() # makes the connection to the connected camera
         self.t0 = time.time()  # time of initiation
         self.int_time = 0      # time taken to process an image
         self.plot_time = 0     # time taken to plot the graph
-        self.initCamera()
         
     def initCamera(self):
         dcam = ctypes.windll.dcamapi
@@ -98,9 +99,8 @@ class main_window(QMainWindow):
         
         n_cameras = paraminit.iDeviceCount    
         print("found: {} cameras".format(n_cameras))
-        hcam = camera_try.HamamatsuCameraMR(camera_id = 0)
-        print("camera 0 model:", hcam.getModelInfo(0))
-        return hcam
+        self.hcam = camera_try.HamamatsuCameraMR(camera_id = 0)
+        print("camera 0 model:", self.hcam.getModelInfo(0))
 
     def init_log(self):
         """Create a directory for today's date as a subdirectory in the log file path
@@ -208,7 +208,34 @@ class main_window(QMainWindow):
             atom_menu.addAction(self.atom_varplot_toggles[X])
             self.atom_varplot_toggles[X].triggered.connect(self.update_varplot_axes)
         varplot_menu.addMenu(atom_menu)
-
+        
+        #### tab for capture ####
+        capture_tab = QWidget()
+        capture_grid = QGridLayout(self)
+        capture_tab.setLayout(capture_grid)        
+        self.tabs.addTab(capture_tab,"Capture")  
+        
+        capture_text = QLabel("Capture", self)
+        capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
+        capture_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(capture_text, 0,0, 1,3)
+        
+        start_button = QPushButton("Start Acquire", self)
+        start_button.resize(start_button.sizeHint())
+        #start_button.clicked.connect(self.hcam.startAcquisition())
+        capture_grid.addWidget(start_button, 1,0, 1,1)
+        
+        stop_button = QPushButton("Stop Acquire", self)
+        stop_button.resize(stop_button.sizeHint())
+        #stop_button.clicked.connect(self.hcam.stopAcquisition())
+        capture_grid.addWidget(stop_button, 1,1, 1,1)
+        
+        capture_im_widget = pg.GraphicsLayoutWidget()
+        capture_viewbox = capture_im_widget.addViewBox()
+        self.capture_canvas = pg.ImageItem()
+        capture_viewbox.addItem(self.capture_canvas)
+        capture_grid.addWidget(capture_im_widget, 2,0, 1,3)   
+        
         #### tab for settings  ####
         settings_tab = QWidget()
         settings_grid = QGridLayout()
@@ -281,7 +308,7 @@ class main_window(QMainWindow):
 
         # show paths from the current config file
         self.path_label_text = ['Image Storage Path: ', 'Log File Path: ', 
-                'Dexter Sync File: ', 'Image Read Path: ', 'Results Path: ']
+                                'Image Read Path: ', 'Results Path: ']
         self.path_label = {}
         for i in range(len(self.path_label_text)):
             new_label = QLabel(self.path_label_text[i], self)
@@ -629,7 +656,6 @@ class main_window(QMainWindow):
                     active=self.dw_mode.isChecked()) # instantiate dir watcher
             self.remove_im_files() # prompt to remove image files
             self.dir_watcher.event_handler.event_path.connect(self.update_plot) # default
-            self.dir_watcher.event_handler.sync_dexter() # get the current Dexter file number
             self.dw_status_label.setText("Running")
             # get current date
             self.date = self.dir_watcher.date
