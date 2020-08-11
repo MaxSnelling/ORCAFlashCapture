@@ -35,9 +35,10 @@ import imageHandler as ih # process images to build up a histogram
 import histoHandler as hh # collect data from histograms together
 import directoryWatcher as dw # use watchdog to get file creation events
 import fitCurve as fc   # custom class to get best fit parameters using curve_fit
-import camera_try
 import ctypes
 import ctypes.util
+import camera_try_stub
+import frameCheckThread
 ####    ####    ####    ####
 
 # main GUI window contains all the widgets                
@@ -80,22 +81,23 @@ class main_window(QMainWindow):
         pg.setConfigOption('background', 'w') # set graph background default white
         pg.setConfigOption('foreground', 'k') # set graph foreground default black
         self.date = time.strftime("%d %b %B %Y", time.localtime()).split(" ") # day short_month long_month year
+        self.initCamera() # makes the connection to the connected camera
         self.init_UI(config_file)  # make the widgets
         self.init_DW(pop_up)  # ask the user if they want to start the dir watcher
-        self.init_log() # write header to the log file that collects histograms
-        #self.initCamera() # makes the connection to the connected camera
+        self.init_log() # write header to the log file that collects histograms   
         self.t0 = time.time()  # time of initiation
         self.int_time = 0      # time taken to process an image
-        self.plot_time = 0     # time taken to plot the graph
+        self.plot_time = 0     # time taken to plot the graph        
         
     def initCamera(self):
+        camera_try = camera_try_stub
         dcam = ctypes.windll.dcamapi
         print(dcam)
         paraminit = camera_try.DCAMAPI_INIT(0, 0, 0, 0, None, None) 
         paraminit.size = ctypes.sizeof(paraminit)
         error_code = dcam.dcamapi_init(ctypes.byref(paraminit))
-        if (error_code != camera_try.DCAMERR_NOERROR):
-            raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
+        #if (error_code != camera_try.DCAMERR_NOERROR):
+        #    raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
         
         n_cameras = paraminit.iDeviceCount    
         print("found: {} cameras".format(n_cameras))
@@ -136,6 +138,7 @@ class main_window(QMainWindow):
         self.centre_widget.layout.addWidget(self.tabs)
         self.centre_widget.setLayout(self.centre_widget.layout)
         self.setCentralWidget(self.centre_widget)
+        self.frame_thread = frameCheckThread.FrameCheckThread(self)
         
         # validators for user input
         reg_exp = QRegExp(r'([0-9]+(\.[0-9]+)?,?)+')
@@ -218,7 +221,7 @@ class main_window(QMainWindow):
         capture_text = QLabel("Capture", self)
         capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
         capture_text.setAlignment(Qt.AlignCenter)
-        capture_grid.addWidget(capture_text, 0,0, 1,3)
+        capture_grid.addWidget(capture_text, 0,0, 1,4)
         
         start_button = QPushButton("Start Acquire", self)
         start_button.resize(start_button.sizeHint())
@@ -230,11 +233,21 @@ class main_window(QMainWindow):
         #stop_button.clicked.connect(self.hcam.stopAcquisition())
         capture_grid.addWidget(stop_button, 1,1, 1,1)
         
+        start_frame_updater_button = QPushButton("Start Frame Updater", self)
+        start_frame_updater_button.resize(start_frame_updater_button.sizeHint())
+        start_frame_updater_button.clicked.connect(self.start_frame_updater)
+        capture_grid.addWidget(start_frame_updater_button, 1,2, 1,1)
+        
+        stop_frame_updater_button = QPushButton("Stop Frame Updater", self)
+        stop_frame_updater_button.resize(stop_frame_updater_button.sizeHint())
+        stop_frame_updater_button.clicked.connect(self.stop_frame_updater)
+        capture_grid.addWidget(stop_frame_updater_button, 1,3, 1,1)
+        
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
-        capture_grid.addWidget(capture_im_widget, 2,0, 1,3)   
+        capture_grid.addWidget(capture_im_widget, 2,0, 1,3)  
         
         #### tab for settings  ####
         settings_tab = QWidget()
@@ -682,6 +695,28 @@ class main_window(QMainWindow):
             # set current file paths
             for key, value in self.dir_watcher.dirs_dict.items():
                 self.path_label[key].setText(value)
+                
+    #### #### camera functions #### ####
+    
+    def get_latest_frame(self):
+        frames = self.hcam.getFrames()
+        #frame_width, frame_height = frames[1][0], frames[1][1]
+        frame_list = frames[0]
+        if len(frame_list) >= 1:
+            return frame_list.last()
+        else:
+            return None
+    
+    def update_image(self):
+        latest_frame = self.get_latest_frame()
+        if latest_frame != None:
+            self.capture_canvas.setImage(latest_frame)
+    
+    def start_frame_updater(self):
+        self.frame_thread.start()
+        
+    def stop_frame_updater(self):
+        self.frame_thread.stop()       
 
     #### #### user input functions #### #### 
 
@@ -1347,11 +1382,13 @@ class main_window(QMainWindow):
         im_vals = self.image_handler[0].load_full_im(event_path)
         self.im_canvas.setImage(im_vals)
         self.im_hist.setLevels(np.min(im_vals), np.max(im_vals))
+        self.capture_canvas.setImage(im_vals)
         
     def update_plot(self, event_path):
         """Receive the event path emitted from the system event handler signal
         process the file in the event path with the image handler and update
         the figure"""
+        print("1")
         # add the count
         t1 = time.time()
         for im_han in self.image_handler:
@@ -1363,6 +1400,7 @@ class main_window(QMainWindow):
         self.recent_label.setText('Just processed: '+os.path.basename(event_path))
         self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # update the displayed plot
         self.plot_time = time.time() - t2
+        print("2")
 
     def update_plot_only(self, event_path):
         """Receive the event path emitted from the system event handler signal
@@ -1465,7 +1503,7 @@ class main_window(QMainWindow):
         """The user selects which variable they want to display on the plot
         The variables are read from the x and y axis QComboBoxes
         Then the plot is updated with statistics from the histo_handler"""
-        if np.size(hist_han.vals) > 0:
+        if np.size(hist_han.temp_vals) > 0:
             hist_han.xvals = hist_han.stats_dict[str(
                     self.plot_labels[0].currentText())] # set x values
             

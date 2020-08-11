@@ -350,7 +350,7 @@ class HamamatsuCamera(object):
         self.max_height = self.getPropertyValue("image_height")[0]
 
 
-    def captureSetup(self):
+    def __captureSetup(self):
         """
         Capture setup (internal use only). This is called at the start
         of new acquisition sequence to determine the current ROI and
@@ -762,8 +762,8 @@ class HamamatsuCamera(object):
 
         self.stopAcquisition()
 
-        if self.acquisition_mode is "fixed_length" or \
-                self.acquisition_mode is "run_till_abort":
+        if self.acquisition_mode == "fixed_length" or \
+                self.acquisition_mode == "run_till_abort":
             self.acquisition_mode = mode
             self.number_frames = number_frames
         else:
@@ -774,32 +774,30 @@ class HamamatsuCamera(object):
         """
         Start data acquisition.
         """
-        self.captureSetup()
+        self.__captureSetup()
 
         #
         # Allocate Hamamatsu image buffers.
         # We allocate enough to buffer 2 seconds of data or the specified 
         # number of frames for a fixed length acquisition
         #
-        if self.acquisition_mode is "run_till_abort":
+        if self.acquisition_mode == "run_till_abort":
             n_buffers = int(2.0*self.getPropertyValue("internal_frame_rate")[0])
-        elif self.acquisition_mode is "fixed_length":
+        elif self.acquisition_mode == "fixed_length":
             n_buffers = self.number_frames
 
         self.number_image_buffers = n_buffers
-
-    
-
+        
         self.checkStatus(dcam.dcambuf_alloc(self.camera_handle,
                                   ctypes.c_int32(self.number_image_buffers)),
                          "dcambuf_alloc")
 
         # Start acquisition.
-        if self.acquisition_mode is "run_till_abort":
+        if self.acquisition_mode == "run_till_abort":
             self.checkStatus(dcam.dcamcap_start(self.camera_handle,
                                     DCAMCAP_START_SEQUENCE),
                              "dcamcap_start")
-        if self.acquisition_mode is "fixed_length":
+        if self.acquisition_mode == "fixed_length":
             self.checkStatus(dcam.dcamcap_start(self.camera_handle,
                                     DCAMCAP_START_SNAP),
                              "dcamcap_start")
@@ -889,7 +887,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
         """
         Allocate as many frames as will fit in 2GB of memory and start data acquisition.
         """
-        self.captureSetup()
+        self.__captureSetup()
 
         # Allocate new image buffers if necessary. This will allocate
         # as many frames as can fit in 2GB of memory, or 2000 frames,
@@ -901,10 +899,10 @@ class HamamatsuCameraMR(HamamatsuCamera):
         #
         #backslash is used to escape the newline
         if (self.old_frame_bytes != self.frame_bytes) or \
-                (self.acquisition_mode is "fixed_length"): 
+                (self.acquisition_mode == "fixed_length"): 
 
             n_buffers = min(int((2.0 * 1024 * 1024 * 1024)/self.frame_bytes), 2000)
-            if self.acquisition_mode is "fixed_length":
+            if self.acquisition_mode == "fixed_length":
                 self.number_image_buffers = self.number_frames
             else:
                 self.number_image_buffers = n_buffers
@@ -931,14 +929,14 @@ class HamamatsuCameraMR(HamamatsuCamera):
                 self.hcam_ptr, self.number_image_buffers)
         paramattach.size = ctypes.sizeof(paramattach)
 
-        if self.acquisition_mode is "run_till_abort":
+        if self.acquisition_mode == "run_till_abort":
             self.checkStatus(dcam.dcambuf_attach(self.camera_handle,
                                     paramattach),
                              "dcam_attachbuffer")
             self.checkStatus(dcam.dcamcap_start(self.camera_handle,
                                     DCAMCAP_START_SEQUENCE),
                              "dcamcap_start")
-        if self.acquisition_mode is "fixed_length":
+        if self.acquisition_mode == "fixed_length":
             paramattach.buffercount = self.number_frames
             self.checkStatus(dcam.dcambuf_attach(self.camera_handle,
                                     paramattach),
@@ -969,7 +967,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
     
     def startRecording(self):
         
-        self.captureSetup()
+        self.__captureSetup()
         self.number_image_buffers = 2
         paramrec = DCAMREC_OPEN(0, 0, None, None, None, 0, 0, 0, 0, 0, 0, 0)
         paramrec.size = ctypes.sizeof(paramrec)

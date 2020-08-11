@@ -16,6 +16,7 @@ import time
 from scipy.signal import find_peaks
 from scipy.stats import norm
 from astropy.stats import binom_conf_interval
+from PIL import Image
 
 def est_param(h):
     """Generator function to estimate the parameters for a Guassian fit. 
@@ -94,8 +95,10 @@ class image_handler:
         """return an array with the values of the image"""
         print(im_name)
         print(self.pic_size)
-        return np.loadtxt(im_name, delimiter=None,
-                              usecols=range(1,self.pic_size+1))
+        #return np.loadtxt(im_name, delimiter=None,
+        #                      usecols=range(1,self.pic_size+1))
+        image = Image.open(im_name)
+        return np.asarray(image)
         
     def process(self, im_name):
         """Get the data from an image """
