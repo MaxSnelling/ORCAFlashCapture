@@ -315,6 +315,8 @@ class HamamatsuCamera(object):
     def setSubArrayMode(self):
         None
 
+    def setACQMode(self, mode, number_frames = None):
+        None
 
     def startAcquisition(self):
         None

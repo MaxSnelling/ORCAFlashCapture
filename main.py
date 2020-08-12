@@ -26,7 +26,8 @@ except ModuleNotFoundError:
     from PyQt5.QtCore import QThread, pyqtSignal, QEvent, QRegExp, Qt
     from PyQt5.QtGui import (QGridLayout, QMessageBox, QLineEdit, QIcon, 
             QFileDialog, QDoubleValidator, QIntValidator, QComboBox, QMenu, 
-            QActionGroup, QVBoxLayout, QFont, QRegExpValidator)
+            QActionGroup, QVBoxLayout, QFont, QRegExpValidator, QSpinBox, QSplitter,
+            QRadioButton)
     from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget, QTabWidget,
         QAction, QMainWindow, QLabel, QInputDialog)
 # change directory to this file's location
@@ -138,7 +139,7 @@ class main_window(QMainWindow):
         self.centre_widget.layout.addWidget(self.tabs)
         self.centre_widget.setLayout(self.centre_widget.layout)
         self.setCentralWidget(self.centre_widget)
-        self.frame_thread = frameCheckThread.FrameCheckThread(self)
+        self.acquisition_mode = "run_till_abort"
         
         # validators for user input
         reg_exp = QRegExp(r'([0-9]+(\.[0-9]+)?,?)+')
@@ -218,36 +219,81 @@ class main_window(QMainWindow):
         capture_tab.setLayout(capture_grid)        
         self.tabs.addTab(capture_tab,"Capture")  
         
+        i=0
+        start_button = QPushButton("Start Live Acquire", self)
+        start_button.resize(start_button.sizeHint())
+        start_button.clicked.connect(self.start_live)
+        capture_grid.addWidget(start_button, 1,i, 1,1)
+        i+=1
+        
+        stop_button = QPushButton("Stop Live Acquire", self)
+        stop_button.resize(stop_button.sizeHint())
+        stop_button.clicked.connect(self.start_live)
+        capture_grid.addWidget(stop_button, 1,i, 1,1)
+        i+=1
+        
+        stop_button = QPushButton("Start Frame Acquire", self)
+        stop_button.resize(stop_button.sizeHint())
+        stop_button.clicked.connect(self.start_frame_acquire)
+        capture_grid.addWidget(stop_button, 1,i, 1,1)
+        i+=1 
+        i+=1 
+        
+        acquisition_mode_text = QLabel("Acquisition Mode:", self)
+        acquisition_mode_text.setFont(QFont(acquisition_mode_text.font().family(), 12))
+        acquisition_mode_text.setAlignment(Qt.AlignRight)
+        capture_grid.addWidget(acquisition_mode_text, 1,i, 1,1)
+        i+=1
+        
+        live_toggle = QRadioButton("Live", self)
+        live_toggle.resize(live_toggle.sizeHint())
+        live_toggle.clicked.connect(self.set_acquisition_live)
+        live_toggle.setChecked(True)
+        capture_grid.addWidget(live_toggle, 1,i, 1,1)
+        i+=1
+        
+        fixed_frame_toggle = QRadioButton("Fixed Frame Count", self)
+        fixed_frame_toggle.resize(fixed_frame_toggle.sizeHint())
+        fixed_frame_toggle.clicked.connect(self.set_acquisition_fixed)
+        capture_grid.addWidget(fixed_frame_toggle, 1,i, 1,1)
+        i+=1
+        
+        frame_dropbox = QComboBox(self)
+        frame_options = ["1", "2", "3", "4", "5"]
+        frame_dropbox.addItems(frame_options)
+        self.frame_selection_policy = frame_dropbox.insertPolicy()        
+        capture_grid.addWidget(frame_dropbox, 1,i, 1,1)
+        i+=1
+
+        frame_set_button = QPushButton("Set Frame Count", self)
+        frame_set_button.resize(stop_button.sizeHint())
+        frame_set_button.clicked.connect(self.set_frame_count)
+        capture_grid.addWidget(frame_set_button, 1,i, 1,1)        
+        i+=1
+        i+=1
+        
+        threshold_text = QLabel("Threshold:", self)
+        threshold_text.setFont(QFont(threshold_text.font().family(), 12))
+        threshold_text.setAlignment(Qt.AlignRight)
+        capture_grid.addWidget(threshold_text, 1,i, 1,1)
+        i+=1
+        
+        threshold_input = QSpinBox(self)
+        threshold_input.setMinimum(0)
+        threshold_input.setMaximum(10)
+        capture_grid.addWidget(threshold_input, 1,i, 1,1)
+        threshold_input.resize(threshold_input.sizeHint())
+        
         capture_text = QLabel("Capture", self)
         capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
         capture_text.setAlignment(Qt.AlignCenter)
-        capture_grid.addWidget(capture_text, 0,0, 1,4)
-        
-        start_button = QPushButton("Start Acquire", self)
-        start_button.resize(start_button.sizeHint())
-        #start_button.clicked.connect(self.hcam.startAcquisition())
-        capture_grid.addWidget(start_button, 1,0, 1,1)
-        
-        stop_button = QPushButton("Stop Acquire", self)
-        stop_button.resize(stop_button.sizeHint())
-        #stop_button.clicked.connect(self.hcam.stopAcquisition())
-        capture_grid.addWidget(stop_button, 1,1, 1,1)
-        
-        start_frame_updater_button = QPushButton("Start Frame Updater", self)
-        start_frame_updater_button.resize(start_frame_updater_button.sizeHint())
-        start_frame_updater_button.clicked.connect(self.start_frame_updater)
-        capture_grid.addWidget(start_frame_updater_button, 1,2, 1,1)
-        
-        stop_frame_updater_button = QPushButton("Stop Frame Updater", self)
-        stop_frame_updater_button.resize(stop_frame_updater_button.sizeHint())
-        stop_frame_updater_button.clicked.connect(self.stop_frame_updater)
-        capture_grid.addWidget(stop_frame_updater_button, 1,3, 1,1)
+        capture_grid.addWidget(capture_text, 0,0, 1,i+1)
         
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
-        capture_grid.addWidget(capture_im_widget, 2,0, 1,3)  
+        capture_grid.addWidget(capture_im_widget, 2,0, 1,7)  
         
         #### tab for settings  ####
         settings_tab = QWidget()
@@ -711,12 +757,39 @@ class main_window(QMainWindow):
         latest_frame = self.get_latest_frame()
         if latest_frame != None:
             self.capture_canvas.setImage(latest_frame)
+            return True
+        else:
+            return False
     
-    def start_frame_updater(self):
-        self.frame_thread.start()
+    def start_live(self):
+        if self.acquisition_mode == "run_till_abort":
+            self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
+            self.hcam.startAcquisition()
+            self.frame_thread.start()
         
-    def stop_frame_updater(self):
-        self.frame_thread.stop()       
+    def stop_live(self):
+        if self.acquisition_mode == "run_till_abort":
+            self.hcam.stopAcquisition()
+            self.frame_thread.stop()\
+        
+    def start_frame_acquire(self):
+        if self.aquisition_mode == "fixed_length":
+            self.frame_thread = frameCheckThread.FrameCheckThreadFixed(self)
+            self.hcam.startAcquisition()
+            self.frame_thread.start()        
+        
+    def set_acquisition_live(self):
+        self.acquisition_mode = "run_till_abort"
+        self.hcam.setACQMode(self.acquisition_mode)
+        
+    def set_acquisition_fixed(self):
+        self.acquisition_mode = "fixed_length"
+        self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
+    
+    def set_frame_count(self):
+        self.frame_count = self.frame_selection_policy
+        self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
+        
 
     #### #### user input functions #### #### 
 
@@ -1087,7 +1160,7 @@ class main_window(QMainWindow):
                 file_list = [x for x in self.image_handler[idx].files if x]
                 self.histo_handler[idx].temp_vals['Start file #'] = min(map(int, file_list))
                 self.histo_handler[idx].temp_vals['End file #'] = max(map(int, file_list))
-                self.histo_handler[idx].temp_vals['ROI xc ; yc ; size'] = ' ; '.join([self.roi_edits[self.atomX[i]+label].text()
+                self.histo_handler[idx].temp_vals['ROI xc ; yc ; size'] = ' ; '.join([self.roi_edits[self.atomX[idx]+label].text()
                                         for label in self.roi_label_text])
                 self.histo_handler[idx].temp_vals['Number of images processed'] = self.image_handler[idx].im_num
                 self.histo_handler[idx].temp_vals['Counts above : below threshold'] = str(atom_count) + ' : ' + str(empty_count)
@@ -1875,6 +1948,9 @@ class main_window(QMainWindow):
 
     def closeEvent(self, event):
         """Prompt user to save data on closing"""
+        # Stops frame watch thread if running
+        self.frame_thread.stop()
+        self.hcam.shutdown()
         reply = QMessageBox.question(self, 'Confirm Action',
             "Save before closing?", QMessageBox.Save |
             QMessageBox.Discard | QMessageBox.Cancel, QMessageBox.Cancel)
@@ -1888,7 +1964,7 @@ class main_window(QMainWindow):
                 self.dir_watcher.observer.stop()
             event.accept()
         else:
-            event.ignore()        
+            event.ignore()
 
 ####    ####    ####    #### 
 
