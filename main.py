@@ -139,6 +139,7 @@ class main_window(QMainWindow):
         self.centre_widget.layout.addWidget(self.tabs)
         self.centre_widget.setLayout(self.centre_widget.layout)
         self.setCentralWidget(self.centre_widget)
+        self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
         self.acquisition_mode = "run_till_abort"
         
         # validators for user input
@@ -220,21 +221,33 @@ class main_window(QMainWindow):
         self.tabs.addTab(capture_tab,"Capture")  
         
         i=0
-        start_button = QPushButton("Start Live Acquire", self)
+        live_text = QLabel("Live:", self)
+        live_text.setFont(QFont(live_text.font().family(), 12))
+        live_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(live_text, 1,i, 1,1)
+        i+=1
+        
+        start_button = QPushButton("Start", self)
         start_button.resize(start_button.sizeHint())
         start_button.clicked.connect(self.start_live)
         capture_grid.addWidget(start_button, 1,i, 1,1)
         i+=1
         
-        stop_button = QPushButton("Stop Live Acquire", self)
+        stop_button = QPushButton("Stop", self)
         stop_button.resize(stop_button.sizeHint())
         stop_button.clicked.connect(self.start_live)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1
         
-        stop_button = QPushButton("Start Frame Acquire", self)
+        fixed_frame_text = QLabel("Fixed Frame:", self)
+        fixed_frame_text.setFont(QFont(fixed_frame_text.font().family(), 12))
+        fixed_frame_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(fixed_frame_text, 1,i, 1,1)
+        i+=1
+        
+        stop_button = QPushButton("Capture", self)
         stop_button.resize(stop_button.sizeHint())
-        stop_button.clicked.connect(self.start_frame_acquire)
+        stop_button.clicked.connect(self.fixed_frame_capture)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1 
         i+=1 
@@ -261,7 +274,8 @@ class main_window(QMainWindow):
         frame_dropbox = QComboBox(self)
         frame_options = ["1", "2", "3", "4", "5"]
         frame_dropbox.addItems(frame_options)
-        self.frame_selection_policy = frame_dropbox.insertPolicy()        
+        self.frame_selection_policy = frame_dropbox.insertPolicy() 
+        self.frame_count = "1"
         capture_grid.addWidget(frame_dropbox, 1,i, 1,1)
         i+=1
 
@@ -772,7 +786,7 @@ class main_window(QMainWindow):
             self.hcam.stopAcquisition()
             self.frame_thread.stop()\
         
-    def start_frame_acquire(self):
+    def fixed_frame_capture(self):
         if self.aquisition_mode == "fixed_length":
             self.frame_thread = frameCheckThread.FrameCheckThreadFixed(self)
             self.hcam.startAcquisition()
