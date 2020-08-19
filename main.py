@@ -20,18 +20,18 @@ try:
     from PyQt4.QtCore import QThread, pyqtSignal, QEvent, QRegExp
     from PyQt4.QtGui import (QApplication, QPushButton, QWidget, QLabel, QAction,
             QGridLayout, QMainWindow, QMessageBox, QLineEdit, QIcon, QFileDialog,
-            QDoubleValidator, QIntValidator, QComboBox, QMenu, QActionGroup, 
-            QTabWidget, QVBoxLayout, QFont, QInputDialog, QRegExpValidator) 
+            QDoubleValidator, QIntValidator, QComboBox, QMenu, QActionGroup,
+            QTabWidget, QVBoxLayout, QFont, QInputDialog, QRegExpValidator)
 except ModuleNotFoundError:
     from PyQt5.QtCore import QThread, pyqtSignal, QEvent, QRegExp, Qt
-    from PyQt5.QtGui import (QGridLayout, QMessageBox, QLineEdit, QIcon, 
-            QFileDialog, QDoubleValidator, QIntValidator, QComboBox, QMenu, 
+    from PyQt5.QtGui import (QGridLayout, QMessageBox, QLineEdit, QIcon,
+            QFileDialog, QDoubleValidator, QIntValidator, QComboBox, QMenu,
             QActionGroup, QVBoxLayout, QFont, QRegExpValidator, QSpinBox, QSplitter,
             QRadioButton)
     from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget, QTabWidget,
         QAction, QMainWindow, QLabel, QInputDialog)
 # change directory to this file's location
-os.chdir(os.path.dirname(os.path.realpath(__file__))) 
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 import imageHandler as ih # process images to build up a histogram
 import histoHandler as hh # collect data from histograms together
 import directoryWatcher as dw # use watchdog to get file creation events
@@ -42,29 +42,29 @@ import camera_try
 import frameCheckThread
 ####    ####    ####    ####
 
-# main GUI window contains all the widgets                
+# main GUI window contains all the widgets
 class main_window(QMainWindow):
     """Main GUI window managing an instance of SAIA.
 
     Use Qt to produce the window where the histogram plot is shown.
-    A simple interface allows the user to control the limits of the plot 
-    and number of bins in the histogram. Separate tabs are made for 
+    A simple interface allows the user to control the limits of the plot
+    and number of bins in the histogram. Separate tabs are made for
     settings, multirun options, the histogram, histogram statistics,
     displaying an image, and plotting histogram statistics.
     Separate imageHandler instances are used to analyse two different ROIs.
-     - The imageHandler module manages variables associated with individual 
+     - The imageHandler module manages variables associated with individual
         files and creates the histogram
-     - The histoHandler module manages variables associated with the 
+     - The histoHandler module manages variables associated with the
         collection of files in several histograms
      - The directoryWatcher module manages file moving, saving, and naming.
      - The fitCurve module stores common functions for curve fitting.
     This GUI was produced with help from http://zetcode.com/gui/pyqt5/.
     Keyword arguments:
-    config_file  -- if absolute path to a config file that contains 
-        the directories for the directoryWatcher is supplied, then use 
+    config_file  -- if absolute path to a config file that contains
+        the directories for the directoryWatcher is supplied, then use
         this instead of the default './config/config.dat'.
-    pop_up       -- control whether a pop-up window asks the user to 
-        initiate the directoryWatcher. 
+    pop_up       -- control whether a pop-up window asks the user to
+        initiate the directoryWatcher.
         0: don't initiate the directoryWatcher.
         1: tacitly initiate the directoryWatcher.
         2: pop-up window asks the user if they want to initiate.
@@ -75,31 +75,31 @@ class main_window(QMainWindow):
         self.Nr   = 8.8   # read-out noise from EMCCD
         self.dir_watcher = None  # a button will initiate the dir watcher
         self.atomX = ['Cs ', 'Rb ']   # term labels for atoms
-        self.c = [(255,127,14), (31,119,180)] # colours to plot in 
+        self.c = [(255,127,14), (31,119,180)] # colours to plot in
         self.image_handler = [ih.image_handler(i, self.atomX[i]) for i in range(len(self.atomX))] # class to process images
         self.histo_handler = [hh.histo_handler(i, self.atomX[i]) for i in range(len(self.atomX))] # class to process histograms
-        self.hist_num = 0 # ID number for the next histogram 
+        self.hist_num = 0 # ID number for the next histogram
         pg.setConfigOption('background', 'w') # set graph background default white
         pg.setConfigOption('foreground', 'k') # set graph foreground default black
         self.date = time.strftime("%d %b %B %Y", time.localtime()).split(" ") # day short_month long_month year
         self.initCamera() # makes the connection to the connected camera
         self.init_UI(config_file)  # make the widgets
         self.init_DW(pop_up)  # ask the user if they want to start the dir watcher
-        self.init_log() # write header to the log file that collects histograms   
+        self.init_log() # write header to the log file that collects histograms
         self.t0 = time.time()  # time of initiation
         self.int_time = 0      # time taken to process an image
-        self.plot_time = 0     # time taken to plot the graph        
-        
+        self.plot_time = 0     # time taken to plot the graph
+
     def initCamera(self):
         dcam = ctypes.windll.dcamapi
         print(dcam)
-        paraminit = camera_try.DCAMAPI_INIT(0, 0, 0, 0, None, None) 
+        paraminit = camera_try.DCAMAPI_INIT(0, 0, 0, 0, None, None)
         paraminit.size = ctypes.sizeof(paraminit)
         error_code = dcam.dcamapi_init(ctypes.byref(paraminit))
         if (error_code != camera_try.DCAMERR_NOERROR):
             raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
-        
-        n_cameras = paraminit.iDeviceCount    
+
+        n_cameras = paraminit.iDeviceCount
         print("found: {} cameras".format(n_cameras))
         self.hcam = camera_try.HamamatsuCameraMR(camera_id = 0)
         print("camera 0 model:", self.hcam.getModelInfo(0))
@@ -109,7 +109,7 @@ class main_window(QMainWindow):
         then write the header to the log file path defined in config.dat"""
         dir_watcher_dict = dw.dir_watcher.get_dirs(self.config_edit.text()) # static method
         # make subdirectory if it doesn't already exist
-        log_file_dir = dir_watcher_dict['Log File Path: ']+'\%s\%s\%s'%(self.date[3],self.date[2],self.date[0]) 
+        log_file_dir = dir_watcher_dict['Log File Path: ']+'\%s\%s\%s'%(self.date[3],self.date[2],self.date[0])
         try:
             os.makedirs(log_file_dir, exist_ok=True)
         except PermissionError:  # couldn't access the path, start a log file here
@@ -118,7 +118,7 @@ class main_window(QMainWindow):
 
         # log is saved in a dated subdirectory and the file name also has the date
         # make a separate log file for each atomic species:
-        self.log_file_names = [os.path.join(log_file_dir, 
+        self.log_file_names = [os.path.join(log_file_dir,
                    X+self.date[0]+self.date[1]+self.date[3]+'.dat')  for X in self.atomX]
         # write the header to the log file
         for file_name in self.log_file_names:
@@ -127,20 +127,20 @@ class main_window(QMainWindow):
                     f.write('//Single Atom Image Analyser Log File: collects histogram data\n')
                     f.write('include --[]\n')
                     f.write('#'+', '.join(self.histo_handler[0].stats_dict.keys())+'\n')
-       
+
 
     def init_UI(self, config_file='./config/config.dat'):
         """Create all of the widget objects required"""
         # grid layout: central main plot, params above, dir watcher status at bottom
         self.centre_widget = QWidget()
-        self.tabs = QTabWidget()                   # make tabs for each main display 
+        self.tabs = QTabWidget()                   # make tabs for each main display
         self.centre_widget.layout = QVBoxLayout()
         self.centre_widget.layout.addWidget(self.tabs)
         self.centre_widget.setLayout(self.centre_widget.layout)
         self.setCentralWidget(self.centre_widget)
         self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
         self.acquisition_mode = "run_till_abort"
-        
+
         # validators for user input
         reg_exp = QRegExp(r'([0-9]+(\.[0-9]+)?,?)+')
         comma_validator = QRegExpValidator(reg_exp) # floats and commas
@@ -159,7 +159,7 @@ class main_window(QMainWindow):
         load_im = QAction('Load Image', self) # display a loaded image
         load_im.triggered.connect(self.load_image)
         file_menu.addAction(load_im)
-        
+
         # histogram menu saves/loads/resets histogram and gives binning options
         hist_menu =  menubar.addMenu('Histogram')
 
@@ -170,7 +170,7 @@ class main_window(QMainWindow):
         reset_hist = QAction('Reset histogram', self) # reset hist without loading new data
         reset_hist.triggered.connect(self.check_reset)
         hist_menu.addAction(reset_hist)
-        
+
         load_menu = QMenu('Load histogram data', self)  # drop down menu for loading hist
         load_dir = QAction('From Files', self) # from image files
         load_dir.triggered.connect(self.load_from_files)
@@ -181,14 +181,14 @@ class main_window(QMainWindow):
         load_csv = QAction('From csv', self) # from csv of hist data
         load_csv.triggered.connect(self.load_from_csv)
         load_menu.addAction(load_csv)
-        
+
         hist_menu.addMenu(load_menu)
 
         bin_menu = QMenu('Binning', self) # drop down menu for binning options
         bin_options = QActionGroup(bin_menu)  # group together the options
         self.bin_actions = []
         for action_label in ['Automatic', 'Manual', 'No Display', 'No Update']:
-            self.bin_actions.append(QAction(action_label, bin_menu, checkable=True, 
+            self.bin_actions.append(QAction(action_label, bin_menu, checkable=True,
                             checked=action_label=='Automatic')) # default is auto
             bin_menu.addAction(self.bin_actions[-1])
             bin_options.addAction(self.bin_actions[-1])
@@ -196,11 +196,11 @@ class main_window(QMainWindow):
         bin_options.triggered.connect(self.set_bins) # connect the signal
         hist_menu.addMenu(bin_menu)
 
-        
+
         # load plots from log files
         varplot_menu = menubar.addMenu('Plotting')
         # load histogram data into varplot
-        load_varplot = QAction('Load from log file', self) 
+        load_varplot = QAction('Load from log file', self)
         load_varplot.triggered.connect(self.load_from_log)
         varplot_menu.addAction(load_varplot)
         # choose which atoms to plot
@@ -212,68 +212,68 @@ class main_window(QMainWindow):
             atom_menu.addAction(self.atom_varplot_toggles[X])
             self.atom_varplot_toggles[X].triggered.connect(self.update_varplot_axes)
         varplot_menu.addMenu(atom_menu)
-        
+
         #### tab for capture ####
         capture_tab = QWidget()
         capture_grid = QGridLayout(self)
-        capture_tab.setLayout(capture_grid)        
-        self.tabs.addTab(capture_tab,"Capture")  
-        
+        capture_tab.setLayout(capture_grid)
+        self.tabs.addTab(capture_tab,"Capture")
+
         i=0
         live_text = QLabel("Live:", self)
         live_text.setFont(QFont(live_text.font().family(), 12))
         live_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(live_text, 1,i, 1,1)
         i+=1
-        
+
         start_button = QPushButton("Start", self)
         start_button.resize(start_button.sizeHint())
         start_button.clicked.connect(self.start_live)
         capture_grid.addWidget(start_button, 1,i, 1,1)
         i+=1
-        
+
         stop_button = QPushButton("Stop", self)
         stop_button.resize(stop_button.sizeHint())
         stop_button.clicked.connect(self.start_live)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1
-        
+
         fixed_frame_text = QLabel("Fixed Frame:", self)
         fixed_frame_text.setFont(QFont(fixed_frame_text.font().family(), 12))
         fixed_frame_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(fixed_frame_text, 1,i, 1,1)
         i+=1
-        
+
         stop_button = QPushButton("Capture", self)
         stop_button.resize(stop_button.sizeHint())
         stop_button.clicked.connect(self.fixed_frame_capture)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
-        i+=1 
-        i+=1 
-        
+        i+=1
+        i+=1
+
         acquisition_mode_text = QLabel("Acquisition Mode:", self)
         acquisition_mode_text.setFont(QFont(acquisition_mode_text.font().family(), 12))
         acquisition_mode_text.setAlignment(Qt.AlignRight)
         capture_grid.addWidget(acquisition_mode_text, 1,i, 1,1)
         i+=1
-        
+
         live_toggle = QRadioButton("Live", self)
         live_toggle.resize(live_toggle.sizeHint())
         live_toggle.clicked.connect(self.set_acquisition_live)
         live_toggle.setChecked(True)
         capture_grid.addWidget(live_toggle, 1,i, 1,1)
         i+=1
-        
+
         fixed_frame_toggle = QRadioButton("Fixed Frame Count", self)
         fixed_frame_toggle.resize(fixed_frame_toggle.sizeHint())
         fixed_frame_toggle.clicked.connect(self.set_acquisition_fixed)
         capture_grid.addWidget(fixed_frame_toggle, 1,i, 1,1)
         i+=1
-        
+
         frame_dropbox = QComboBox(self)
         frame_options = ["1", "2", "3", "4", "5"]
         frame_dropbox.addItems(frame_options)
-        self.frame_selection_policy = frame_dropbox.insertPolicy() 
+        self.frame_selection_policy = frame_dropbox.insertPolicy()
         self.frame_count = "1"
         capture_grid.addWidget(frame_dropbox, 1,i, 1,1)
         i+=1
@@ -281,33 +281,33 @@ class main_window(QMainWindow):
         frame_set_button = QPushButton("Set Frame Count", self)
         frame_set_button.resize(stop_button.sizeHint())
         frame_set_button.clicked.connect(self.set_frame_count)
-        capture_grid.addWidget(frame_set_button, 1,i, 1,1)        
+        capture_grid.addWidget(frame_set_button, 1,i, 1,1)
         i+=1
         i+=1
-        
+
         threshold_text = QLabel("Threshold:", self)
         threshold_text.setFont(QFont(threshold_text.font().family(), 12))
         threshold_text.setAlignment(Qt.AlignRight)
         capture_grid.addWidget(threshold_text, 1,i, 1,1)
         i+=1
-        
+
         threshold_input = QSpinBox(self)
         threshold_input.setMinimum(0)
         threshold_input.setMaximum(10)
         capture_grid.addWidget(threshold_input, 1,i, 1,1)
         threshold_input.resize(threshold_input.sizeHint())
-        
+
         capture_text = QLabel("Capture", self)
         capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
         capture_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(capture_text, 0,0, 1,i+1)
-        
+
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
-        capture_grid.addWidget(capture_im_widget, 2,0, 1,7)  
-        
+        capture_grid.addWidget(capture_im_widget, 2,0, 1,7)
+
         #### tab for settings  ####
         settings_tab = QWidget()
         settings_grid = QGridLayout()
@@ -337,7 +337,7 @@ class main_window(QMainWindow):
         settings_grid.addWidget(load_roi, 0,5, 1,1)
 
         # get user to set ROI for Cs and Rb
-        self.roi_edits = {} # make dictionary of QLineEdit 
+        self.roi_edits = {} # make dictionary of QLineEdit
         self.roi_label_text = ['xc: ', 'yc: ', 'size: ']
         for i, X in enumerate(self.atomX):
             for ii in range(len(self.roi_label_text)):
@@ -368,7 +368,7 @@ class main_window(QMainWindow):
         self.read_noise_edit.editingFinished.connect(self.CCD_stat_edit)
         self.read_noise_edit.setValidator(double_validator) # only floats
 
-        
+
         # change paths used for directory watcher by reloading config file:
         config_label = QLabel('Config File: ')
         settings_grid.addWidget(config_label, 6,0, 1,1)
@@ -379,7 +379,7 @@ class main_window(QMainWindow):
 
 
         # show paths from the current config file
-        self.path_label_text = ['Image Storage Path: ', 'Log File Path: ', 
+        self.path_label_text = ['Image Storage Path: ', 'Log File Path: ',
                                 'Image Read Path: ', 'Results Path: ']
         self.path_label = {}
         for i in range(len(self.path_label_text)):
@@ -387,7 +387,7 @@ class main_window(QMainWindow):
             settings_grid.addWidget(new_label, i+7,0, 1,1)
             self.path_label[self.path_label_text[i]] = QLabel('', self)
             settings_grid.addWidget(self.path_label[self.path_label_text[i]], i+7,1, 1,1)
-        
+
         # button to initiate dir watcher
         self.dw_init_button = QPushButton('Initiate directory watcher', self)
         self.dw_init_button.clicked.connect(self.reset_DW) # function to start/stop dir watcher
@@ -406,7 +406,7 @@ class main_window(QMainWindow):
         # label to show last file analysed
         self.recent_label = QLabel('', self)
         settings_grid.addWidget(self.recent_label, i+9,0, 1,4)
-        
+
         #### tab for multi-run settings ####
         multirun_tab = QWidget()
         multirun_grid = QGridLayout()
@@ -414,8 +414,8 @@ class main_window(QMainWindow):
         self.tabs.addTab(multirun_tab, "Multirun")
 
         # dictionary for multirun settings
-        self.mr = {'# omit':0, '# hist':100, 'var list':[], 
-                'prefix':'0', 'o':0, 'h':0, 'v':0, 
+        self.mr = {'# omit':0, '# hist':100, 'var list':[],
+                'prefix':'0', 'o':0, 'h':0, 'v':0,
                 'measure':0}
 
         # user chooses an ID as a prefix for the histogram files
@@ -424,7 +424,7 @@ class main_window(QMainWindow):
         self.measure_edit = QLineEdit(self)
         multirun_grid.addWidget(self.measure_edit, 0,1, 1,1)
         self.measure_edit.setText(str(self.mr['prefix']))
-        
+
         # user chooses a variable to include in the multi-run
         entry_label = QLabel('User variable: ', self)
         multirun_grid.addWidget(entry_label, 1,0, 1,1)
@@ -447,7 +447,7 @@ class main_window(QMainWindow):
         clear_vars_button.clicked.connect(self.clear_multirun_vars)
         clear_vars_button.resize(clear_vars_button.sizeHint())
         multirun_grid.addWidget(clear_vars_button, 2,2, 1,1)
-        
+
         # choose how many files to omit before starting the next histogram
         omit_label = QLabel('Omit the first N files: ', self)
         multirun_grid.addWidget(omit_label, 3,0, 1,1)
@@ -519,7 +519,7 @@ class main_window(QMainWindow):
                 self.hist_edits[text].textChanged[str].connect(self.bins_text_edit)
                 self.hist_edits[text].setValidator(double_validator)
 
-        
+
         #### tab for current histogram statistics ####
         stat_tab = QWidget()
         stat_grid = QGridLayout()
@@ -540,10 +540,10 @@ class main_window(QMainWindow):
         for i, label_text in enumerate(self.histo_handler[0].stats_dict.keys()):
             new_label = QLabel(label_text, self) # description
             stat_grid.addWidget(new_label, i+1,0, 1,1)
-            for ii, X in enumerate(self.atomX): 
+            for ii, X in enumerate(self.atomX):
                 self.stat_labels[X+label_text] = QLabel('', self) # value
                 stat_grid.addWidget(self.stat_labels[X+label_text], i+1,ii+1, 1,1)
-            
+
         # update statistics
         stat_update = QPushButton('Update statistics', self)
         stat_update.clicked[bool].connect(self.update_stats)
@@ -581,11 +581,11 @@ class main_window(QMainWindow):
         self.im_show_toggle.setCheckable(True)
         self.im_show_toggle.clicked[bool].connect(self.set_im_show)
         im_grid.addWidget(self.im_show_toggle, 0,2, 1,1)
-        
+
         # centre of ROI x position
         self.roi_labels = {}
         for i, X in enumerate(self.atomX):
-            im_grid_pos = 0 # starting column. 
+            im_grid_pos = 0 # starting column.
             for ii in range(len(self.roi_label_text)):
                 text = X + self.roi_label_text[ii]
                 self.roi_labels[text] = QLabel(text+str(ii//2), self) # default: 0,0,1
@@ -599,9 +599,9 @@ class main_window(QMainWindow):
         viewbox.addItem(self.im_canvas)
         im_grid.addWidget(im_widget, 1,0, 8,8)
         # make a ROIs that the user can drag. One for Cs, one for Rb
-        self.rois = np.array((pg.ROI([0,0], [1,1], snapSize=1, scaleSnap=True, 
+        self.rois = np.array((pg.ROI([0,0], [1,1], snapSize=1, scaleSnap=True,
                                 translateSnap=True, pen=pg.mkPen(color=self.c[0],width=4)),
-                    pg.ROI([0,1], [1,1], snapSize=1, scaleSnap=True, 
+                    pg.ROI([0,1], [1,1], snapSize=1, scaleSnap=True,
                                 translateSnap=True, pen=pg.mkPen(color=self.c[1],width=4))))
         for roi in self.rois:
             roi.addScaleHandle([1,1], [0.5,0.5]) # allow user to adjust ROI size
@@ -627,11 +627,11 @@ class main_window(QMainWindow):
         self.varplot_canvas.getAxis('bottom').tickFont = font
         self.varplot_canvas.getAxis('left').tickFont = font
         plot_grid.addWidget(self.varplot_canvas, 0,1, 6,8)
-        
+
         # x and y labels
         self.plot_labels = [QComboBox(self), QComboBox(self)]
         for i in range(len(self.plot_labels)):
-            self.plot_labels[i].addItems(list(self.histo_handler[0].stats_dict.keys())) 
+            self.plot_labels[i].addItems(list(self.histo_handler[0].stats_dict.keys()))
             # connect buttons to update functions
             self.plot_labels[i].activated[str].connect(self.update_varplot_axes)
         # empty text box for the user to write their xlabel
@@ -653,14 +653,14 @@ class main_window(QMainWindow):
         self.setGeometry(100, 100, 850, 700)
         self.setWindowTitle('Single Atom Image Analyser')
         self.setWindowIcon(QIcon('docs/tempicon.png'))
-        
-    #### #### initiation functions #### #### 
+
+    #### #### initiation functions #### ####
 
     def init_DW(self, pop_up=2):
         """Ask the user if they want to start the dir watcher or not
         Keyword arguments:
-        pop_up       -- control whether a pop-up window asks the user to 
-            initiate the directoryWatcher. 
+        pop_up       -- control whether a pop-up window asks the user to
+            initiate the directoryWatcher.
             0: don't initiate the directoryWatcher.
             1: tacitly initiate the directoryWatcher.
             2: pop-up window asks the user if they want to initiate."""
@@ -709,10 +709,10 @@ class main_window(QMainWindow):
             self.dw_mode.setText('Active')
         else:
             self.dw_mode.setText('Passive')
-            
+
     def reset_DW(self):
-        """Initiate the dir watcher. If there is already one running, stop the 
-        thread and delete the instance to ensure it doesn't run in the 
+        """Initiate the dir watcher. If there is already one running, stop the
+        thread and delete the instance to ensure it doesn't run in the
         background (which might overwrite files)."""
         if self.dir_watcher: # check if there is a current thread
             self.print_times("ms")  # prints performance of dir_watcher
@@ -722,7 +722,7 @@ class main_window(QMainWindow):
             self.dw_init_button.setText('Initiate directory watcher') # turns on
             self.recent_label.setText('')
 
-        else: 
+        else:
             self.dir_watcher = dw.dir_watcher(
                     config_file=self.config_edit.text(),
                     active=self.dw_mode.isChecked()) # instantiate dir watcher
@@ -741,7 +741,7 @@ class main_window(QMainWindow):
             msg.setIcon(QMessageBox.Information)
             msg.setText(
                 "Directory Watcher initiated in " + self.dw_mode.text()
-                + " mode with settings:" + ''.join([' ']*pad) + ".\n\n" + 
+                + " mode with settings:" + ''.join([' ']*pad) + ".\n\n" +
                 "date\t\t\t--" + date_str + "\n\n" +
                 self.dir_watcher.print_dirs(self.dir_watcher.dirs_dict.items()))
             msg.setStandardButtons(QMessageBox.Ok)
@@ -754,9 +754,9 @@ class main_window(QMainWindow):
             # set current file paths
             for key, value in self.dir_watcher.dirs_dict.items():
                 self.path_label[key].setText(value)
-                
+
     #### #### camera functions #### ####
-    
+
     def get_latest_frame(self):
         frames = self.hcam.getFrames()
         #frame_width, frame_height = frames[1][0], frames[1][1]
@@ -765,7 +765,7 @@ class main_window(QMainWindow):
             return [frame_list[-1], frames[1]]
         else:
             return None
-    
+
     def update_image(self):
         latest_frame = self.get_latest_frame()
         img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
@@ -777,43 +777,43 @@ class main_window(QMainWindow):
             return True
         else:
             return False
-    
+
     def start_live(self):
         if self.acquisition_mode == "run_till_abort":
             self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
             self.hcam.startAcquisition()
             self.frame_thread.start()
-        
+
     def stop_live(self):
         if self.acquisition_mode == "run_till_abort":
             self.hcam.stopAcquisition()
             self.frame_thread.stop()\
-        
+
     def fixed_frame_capture(self):
         if self.acquisition_mode == "fixed_length":
             self.frame_thread = frameCheckThread.FrameCheckThreadFixed(self)
             self.hcam.startAcquisition()
-            #self.frame_thread.start()        
+            #self.frame_thread.start()
             time.sleep(1)
             self.update_image()
-        
+
     def set_acquisition_live(self):
         self.acquisition_mode = "run_till_abort"
         self.hcam.setACQMode(self.acquisition_mode)
-        
+
     def set_acquisition_fixed(self):
         self.acquisition_mode = "fixed_length"
         self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
-    
+
     def set_frame_count(self):
         self.frame_count = self.frame_selection_policy
         self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
-        
 
-    #### #### user input functions #### #### 
+
+    #### #### user input functions #### ####
 
     def set_user_var(self, text=''):
-        """When the user finishes editing the var_edit line edit, update the displayed 
+        """When the user finishes editing the var_edit line edit, update the displayed
         user variable and assign it in the temp_vals of the histo_handler"""
         for i in range(len(self.histo_handler)):
             self.histo_handler[i].temp_vals['User variable'] = self.var_edit.text()
@@ -821,12 +821,12 @@ class main_window(QMainWindow):
 
     def path_text_edit(self, text=''):
         """The user finishes editing an edit text box by pressing return or clicking
-        somewhere else, then the text is sent to this function to reload the config file. 
+        somewhere else, then the text is sent to this function to reload the config file.
         The dir watcher is not updated unless the 'initiate dir watcher' button is used."""
         dw_dict = dw.dir_watcher.get_dirs(self.config_edit.text())
         for key, value in dw_dict.items():
             self.path_label[key].setText(value)
-            
+
     def user_roi(self, pos):
         """The user drags an ROI and this updates the ROI centre and width"""
         roi_idx = np.where(self.rois == self.sender())[0][0]  # index of which roi we changed
@@ -836,16 +836,16 @@ class main_window(QMainWindow):
         l = int(0.5*(xw+yw))  # want a square ROI
         # note: setting the origin as bottom left but the image has origin top left
         xc, yc = int(x0 + l//2), int(y0 + l//2)  # centre
-        
+
         new_dim = [xc, yc, l]  # new dimensions for ROI
         self.image_handler[roi_idx].set_roi(dimensions=new_dim)
         for i in range(len(new_dim)):
             text = self.atomX[roi_idx] + self.roi_label_text[i]
             self.roi_labels[text].setText(text + str(new_dim[i]))
             self.roi_edits[text].setText(str(new_dim[i]))
-            
+
     def pic_size_text_edit(self, text):
-        """Update the specified size of an image in pixels when the user 
+        """Update the specified size of an image in pixels when the user
         edits the text in the line edit widget"""
         for i in range(len(self.image_handler)):
             self.image_handler[i].pic_size = int(text)
@@ -866,9 +866,9 @@ class main_window(QMainWindow):
             self.Nr = float(self.read_noise_edit.text())
 
     def add_var_to_multirun(self):
-        """When the user hits enter or the 'Add to list' button, add the 
-        text from the entry edit to the list of user variables that will 
-        be used for the multi-run. For speed, you can enter a range in 
+        """When the user hits enter or the 'Add to list' button, add the
+        text from the entry edit to the list of user variables that will
+        be used for the multi-run. For speed, you can enter a range in
         the form start,stop,step,repeat. If the multi-run has already
         started, do nothing."""
         if not self.multirun_switch.isChecked():
@@ -876,7 +876,7 @@ class main_window(QMainWindow):
             if np.size(new_var) == 1: # just entered a single variable
                 self.mr['var list'].append(new_var[0])
                 # empty the text edit so that it's quicker to enter a new variable
-                self.entry_edit.setText('') 
+                self.entry_edit.setText('')
 
             elif np.size(new_var) == 3: # range, with no repeats
                 self.mr['var list'] += list(np.arange(new_var[0], new_var[1], new_var[2]))
@@ -902,28 +902,28 @@ class main_window(QMainWindow):
             self.multirun_save_dir.setText(dir_path)
         except OSError:
             pass # user cancelled - file not found
-        
+
     def roi_text_edit(self, text):
         """Update the ROI position and size every time a text edit is made by
         the user to one of the line edit widgets"""
         # find which ROI edit was changed
         roi_idx, _ = self.get_atom_idx(self.roi_edits.items(), self.sender())
-        
+
         # [xc, yc, l]
         new_dim = [self.roi_edits[self.atomX[roi_idx]+dim].text() for dim in self.roi_label_text]
-        
+
         if any([v == '' for v in new_dim]):
             new_dim = [0, 0, 1] # default takes the top left pixel
         else:
             new_dim = list(map(int, new_dim)) # crashes if the user inputs float
-        
-        if (new_dim[0] - new_dim[2]//2 < 0 or new_dim[1] - new_dim[2]//2 < 0 
-            or new_dim[0] + new_dim[2]//2 > self.image_handler[roi_idx].pic_size 
+
+        if (new_dim[0] - new_dim[2]//2 < 0 or new_dim[1] - new_dim[2]//2 < 0
+            or new_dim[0] + new_dim[2]//2 > self.image_handler[roi_idx].pic_size
             or new_dim[1] + new_dim[2]//2 > self.image_handler[roi_idx].pic_size):
             new_dim[2] = 2*min([new_dim[0], new_dim[1]])  # can't have the boundary go off the edge
         if int(new_dim[2]) == 0:
             new_dim[2] = 1 # can't have zero width
-        
+
         self.image_handler[roi_idx].set_roi(dimensions=list(map(int, new_dim)))
         for i in range(len(new_dim)):
             text = self.atomX[roi_idx] + self.roi_label_text[i]
@@ -932,8 +932,8 @@ class main_window(QMainWindow):
         # note: setting the origin as top left because image is inverted
         self.rois[roi_idx].setPos(new_dim[0] - new_dim[2]//2, new_dim[1] - new_dim[2]//2) # xc-l//2, yc-l//2
         self.rois[roi_idx].setSize(new_dim[2], new_dim[2]) # l, l
-        
-        
+
+
     def bins_text_edit(self, text):
         """Update the histogram bins every time a text edit is made by the user
         to one of the line edit widgets"""
@@ -949,9 +949,9 @@ class main_window(QMainWindow):
             for idx, key in list(map(list, zip(*(idxs, keys)))): # transpose iterables
                 # min counts, max counts, # bins
                 new_vals = [self.hist_edits[key[:3]+self.hist_label_text[0]].text(),
-                            self.hist_edits[key[:3]+self.hist_label_text[1]].text(), 
+                            self.hist_edits[key[:3]+self.hist_label_text[1]].text(),
                             self.hist_edits[key[:3]+self.hist_label_text[2]].text()]
-                                
+
                 # if the line edit widget is empty, take an estimate from histogram values
                 if new_vals[0] == '' and self.image_handler[idx].im_num > 0:
                     new_vals[0] = min(self.image_handler[idx].counts[:self.image_handler[idx].im_num])
@@ -968,7 +968,7 @@ class main_window(QMainWindow):
                     # 0 bins causes value error
                     new_vals[2] = 10
                 min_bin, max_bin, num_bins = list(map(int, new_vals))
-                
+
                 # set the new values for the bins of the image handler
                 self.image_handler[idx].bin_array = np.linspace(min_bin, max_bin, num_bins)
 
@@ -985,9 +985,9 @@ class main_window(QMainWindow):
                     self.plot_current_hist([x.histogram for x in self.image_handler]) # doesn't update thresh
                 else:
                     self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # updates thresh
-            
-    
-    #### #### toggle functions #### #### 
+
+
+    #### #### toggle functions #### ####
 
     def get_correlation(self, atom1, atom2, out_type='str'):
         """Given atom arrays 1 and 2 containing the comparison of the counts to the threshold value,
@@ -1004,7 +1004,7 @@ class main_window(QMainWindow):
             return list(map(str, map(np.size, [no_atom, only_1, only_2, both])))
         elif out_type == 'index':
             return [no_atom, only_1, only_2, both]
-        
+
     def dappend(self, key, value):
         """Shorthand for appending a new value to the array in the histo_handler
         dictionary with the given key. Also update the temp values so that they
@@ -1012,7 +1012,7 @@ class main_window(QMainWindow):
         tab to display the new value."""
         for idx, hh in enumerate(self.histo_handler):
             hh.stats_dict[key] = np.append(
-                    hh.stats_dict[key], 
+                    hh.stats_dict[key],
                     np.array(value).astype(hh.stats_dict[key].dtype))
             hh.temp_vals[key] = value
             self.stat_labels[self.atomX[idx]+key].setText(str(value))
@@ -1024,7 +1024,7 @@ class main_window(QMainWindow):
         threshold will not be updated.
         The histo_handler stores temporary values that we might not yet want to add to
         the plot."""
-        atom_list = [] 
+        atom_list = []
         for i in range(len(self.image_handler)):
             if self.image_handler[i].im_num > 0: # only update if a histogram exists
                 if self.thresh_toggle.isChecked(): # using manual threshold
@@ -1092,16 +1092,16 @@ class main_window(QMainWindow):
                     self.histo_handler[i].temp_vals['S/N'] = np.around(sep / np.sqrt(bgw**2 + siw**2), 2)
                     # fractional error in the error is 1/sqrt(2N - 2)
                     self.histo_handler[i].temp_vals['Error in S/N'] = np.around(
-                        self.histo_handler[i].temp_vals['S/N'] * np.sqrt((seperr/sep)**2 + 
+                        self.histo_handler[i].temp_vals['S/N'] * np.sqrt((seperr/sep)**2 +
                         (bgw**2/(2*empty_count - 2) + siw**2/(2*atom_count - 2))/(bgw**2 + siw**2)), 2)
                 else:
-                    for key in ['Background peak count', 'sqrt(Nr^2 + Nbg)', 'Background peak width', 
-                    'Error in Background peak count', 'Signal peak count', 'sqrt(Nr^2 + Ns)', 
-                    'Signal peak width', 'Error in Signal peak count', 'Separation', 'Error in Separation', 
+                    for key in ['Background peak count', 'sqrt(Nr^2 + Nbg)', 'Background peak width',
+                    'Error in Background peak count', 'Signal peak count', 'sqrt(Nr^2 + Ns)',
+                    'Signal peak width', 'Error in Signal peak count', 'Separation', 'Error in Separation',
                     'Fidelity', 'Error in Fidelity', 'S/N', 'Error in S/N']:
                         self.histo_handler[i].temp_vals[key] = 0
                 self.histo_handler[i].temp_vals['Threshold'] = int(self.image_handler[i].thresh)
-            
+
         # calculate correlations:  - assuming only two atoms!
         if self.histo_handler[i].temp_vals['Background peak count']:
             no_atom, only_1, only_2, both = self.get_correlation(atom_list[0], atom_list[1], out_type='str')
@@ -1111,7 +1111,7 @@ class main_window(QMainWindow):
             self.histo_handler[1].temp_vals['Single atom'] = only_2 # just one atom present
             self.histo_handler[0].temp_vals['Both atoms'] = both # both atoms present
             self.histo_handler[1].temp_vals['Both atoms'] = both # both atoms present
-            
+
         # display the new statistics in the labels
         for idx, hh in enumerate(self.histo_handler):
             for key, val in hh.temp_vals.items():
@@ -1120,7 +1120,7 @@ class main_window(QMainWindow):
 
     def fit_gaussians(self, store_stats=False):
         """Update the histogram and fit two Gaussians, splitting the data at the threshold
-        then use the fits to calculate histogram statistics, and set the threshold where the 
+        then use the fits to calculate histogram statistics, and set the threshold where the
         fidelity is maximum. If the store_stats Boolean is True, append the calculated values
         to the histo_handler's statistics dictionary."""
         atom_list = []
@@ -1145,7 +1145,7 @@ class main_window(QMainWindow):
 
             # update threshold to where fidelity is maximum
             if not self.thresh_toggle.isChecked(): # update thresh if not set by user
-                im_han.search_fidelity(best_fits[0].ps[1], best_fits[0].ps[2], 
+                im_han.search_fidelity(best_fits[0].ps[1], best_fits[0].ps[2],
                                                             best_fits[1].ps[1], n=100)
             else:
                 im_han.fidelity, im_han.err_fidelity = np.around(
@@ -1168,7 +1168,7 @@ class main_window(QMainWindow):
             below = im_han.counts[below_idxs] # counts below threshold
             loading_prob = atom_count/im_han.im_num # loading probability
             # use the binomial distribution to get 1 sigma confidence intervals:
-            conf = binom_conf_interval(atom_count, atom_count + empty_count, interval='jeffreys') 
+            conf = binom_conf_interval(atom_count, atom_count + empty_count, interval='jeffreys')
             uplperr = conf[1] - loading_prob # 1 sigma confidence above mean
             lolperr = loading_prob - conf[0] # 1 sigma confidence below mean
             # store the calculated histogram statistics as temp, don't add to plot
@@ -1218,7 +1218,7 @@ class main_window(QMainWindow):
                 self.histo_handler[idx].temp_vals['S/N'] = np.around(sep / np.sqrt(bgw**2 + siw**2), 2)
                 # fractional error in the error is 1/sqrt(2N - 2)
                 self.histo_handler[idx].temp_vals['Error in S/N'] = np.around(
-                            self.histo_handler[idx].temp_vals['S/N'] * np.sqrt((seperr/sep)**2 + 
+                            self.histo_handler[idx].temp_vals['S/N'] * np.sqrt((seperr/sep)**2 +
                             (bgw**2/(2*empty_count - 2) + siw**2/(2*atom_count - 2))/(bgw**2 + siw**2)), 2)
                 self.histo_handler[idx].temp_vals['Threshold'] = int(self.image_handler[idx].thresh)
                 if self.histo_handler[idx].temp_vals['Background peak count']:
@@ -1233,7 +1233,7 @@ class main_window(QMainWindow):
                 for key, val in self.histo_handler[idx].temp_vals.items():
                     self.stat_labels[self.atomX[idx]+key].setText(str(val))
         return 1 # fit successful
-        
+
     def fit_bg_gaussian(self, store_stats=False):
         """Assume that there is only one peak in the histogram as there is no single
         atom signal. Fit a Gaussian to this peak."""
@@ -1302,12 +1302,12 @@ class main_window(QMainWindow):
                 self.stat_labels[self.atomX[i]+key].setText(str(val))
 
     def update_fit(self, toggle=True):
-        """Fit Gaussians to the peaks and use it to get a better estimate of the 
+        """Fit Gaussians to the peaks and use it to get a better estimate of the
         peak centres and widths. The peaks are not quite Poissonian because of the
-        bias from dark counts. Use the fits to get histogram statistics, then set 
+        bias from dark counts. Use the fits to get histogram statistics, then set
         the threshold to maximise fidelity. Iterate until the threshold converges."""
         # only update if a histogram exists
-        if self.image_handler[0].im_num > 0 and self.image_handler[1].im_num > 0: 
+        if self.image_handler[0].im_num > 0 and self.image_handler[1].im_num > 0:
             # store the previous values
             oldthresh = np.array([x.thresh for x in self.image_handler])
             diff = np.ones(len(oldthresh))        # convergence criterion
@@ -1320,8 +1320,8 @@ class main_window(QMainWindow):
             if success: # fit_gaussians returns 0 if the fit fails
                 self.fit_gaussians(store_stats=True) # add new stats to histo_handler
         return success
-            
-    
+
+
     def set_thresh(self, toggle):
         """If the toggle is true, the user supplies the threshold value and it is
         kept constant using the image_handler.histogram() function. Otherwise,
@@ -1340,7 +1340,7 @@ class main_window(QMainWindow):
             except Exception: pass # if already disconnected
             if self.dir_watcher:
                 self.dir_watcher.event_handler.event_path.connect(self.update_plot)
-        
+
     def set_im_show(self, toggle):
         """If the toggle is True, always update the widget with the last image.
         Note that disconnecting all slots means that this toggle might have to
@@ -1351,13 +1351,13 @@ class main_window(QMainWindow):
             else:
                 try: # note: it could have been connected several times... need while True: ... break
                     self.dir_watcher.event_handler.event_path.disconnect(self.update_im)
-                except Exception: pass # if it's already been disconnected 
+                except Exception: pass # if it's already been disconnected
 
     def swap_signals(self):
         """Disconnect the image_handler process signal from the dir_watcher event
         and (re)connect the update plot"""
         try: # disconnect all slots
-            self.dir_watcher.event_handler.event_path.disconnect() 
+            self.dir_watcher.event_handler.event_path.disconnect()
         except Exception: pass
         if self.dir_watcher and self.thresh_toggle.isChecked():
             self.dir_watcher.event_handler.event_path.connect(self.update_plot_only)
@@ -1373,16 +1373,16 @@ class main_window(QMainWindow):
             self.check_reset()
             self.plot_current_hist([x.histogram for x in self.image_handler])
             try: # disconnect all slots
-                self.dir_watcher.event_handler.event_path.disconnect() 
+                self.dir_watcher.event_handler.event_path.disconnect()
             except Exception: pass # already disconnected
             if self.dir_watcher:
                 if self.multirun_save_dir.text() == '':
                     self.choose_multirun_dir()
                 self.dir_watcher.event_handler.event_path.connect(self.multirun_step)
                 self.mr['# omit'] = int(self.omit_edit.text()) # number of files to omit
-                self.mr['# hist'] = int(self.multirun_hist_size.text()) # number of files in histogram                
+                self.mr['# hist'] = int(self.multirun_hist_size.text()) # number of files in histogram
                 self.mr['o'], self.mr['h'], self.mr['v'] = 0, 0, 0 # counters for different stages of multirun
-                self.mr['prefix'] = self.measure_edit.text() # prefix for histogram files 
+                self.mr['prefix'] = self.measure_edit.text() # prefix for histogram files
                 self.multirun_switch.setText('Abort')
                 self.clear_varplot() # varplot cleared so it only has multirun data
                 self.multirun_progress.setText(       # update progress label
@@ -1397,26 +1397,26 @@ class main_window(QMainWindow):
             self.multirun_progress.setText(       # update progress label
                 'Stopped at - User variable: %s, omit %s of %s files, %s of %s histogram files, %.3g%% complete'%(
                     self.mr['var list'][self.mr['v']], self.mr['o'], self.mr['# omit'],
-                    self.mr['h'], self.mr['# hist'], 100 * ((self.mr['# omit'] + self.mr['# hist']) * 
-                    self.mr['v'] + self.mr['o'] + self.mr['h']) / (self.mr['# omit'] + self.mr['# hist']) / 
+                    self.mr['h'], self.mr['# hist'], 100 * ((self.mr['# omit'] + self.mr['# hist']) *
+                    self.mr['v'] + self.mr['o'] + self.mr['h']) / (self.mr['# omit'] + self.mr['# hist']) /
                     np.size(self.mr['var list'])))
 
     def multirun_resume(self):
         """If the button is clicked, resume the multi-run where it was left off.
         If the multirun is already running, do nothing."""
-        if not self.multirun_switch.isChecked(): 
+        if not self.multirun_switch.isChecked():
             self.multirun_switch.setChecked(True)
             self.multirun_switch.setText('Abort')
             try: # disconnect all slots
-                self.dir_watcher.event_handler.event_path.disconnect() 
+                self.dir_watcher.event_handler.event_path.disconnect()
             except Exception: pass # already disconnected
             if self.dir_watcher:
                 self.dir_watcher.event_handler.event_path.connect(self.multirun_step)
-    
+
     def set_bins(self, action=None):
         """Check which of the bin action menu bar options is checked.
         If the toggle is Automatic, use automatic histogram binning.
-        If the toggle is Manual, read in values from the line edit 
+        If the toggle is Manual, read in values from the line edit
         widgets.
         If the toggle is No Display, disconnect the dir watcher new event signal
         from the plot update. Still processes files but doesn't show on histogram
@@ -1426,7 +1426,7 @@ class main_window(QMainWindow):
         if not self.multirun_switch.isChecked(): # don't interrupt multirun
             if self.bin_actions[1].isChecked(): # manual
                 self.swap_signals()  # disconnect image handler, reconnect plot
-                self.bins_text_edit('reset')            
+                self.bins_text_edit('reset')
             elif self.bin_actions[0].isChecked(): # automatic
                 self.swap_signals()  # disconnect image handler, reconnect plot
                 for im_han in self.image_handler:
@@ -1439,7 +1439,7 @@ class main_window(QMainWindow):
             elif self.bin_actions[2].isChecked() or self.bin_actions[3].isChecked(): # No Display or No Update
                 try: # disconnect all slots
                     self.dir_watcher.event_handler.event_path.disconnect()
-                except Exception: pass # if it's already been disconnected 
+                except Exception: pass # if it's already been disconnected
                 # just process the image and set the text of the most recent file
                 if self.dir_watcher: # check that the dir watcher exists to prevent crash
                     # set the text of the most recent file
@@ -1447,27 +1447,27 @@ class main_window(QMainWindow):
                     # just process the image
                     if self.bin_actions[2].isChecked():
                         for im_han in self.image_handler:
-                            self.dir_watcher.event_handler.event_path.connect(im_han.process)                    
-            
-    #### #### canvas functions #### #### 
-        
+                            self.dir_watcher.event_handler.event_path.connect(im_han.process)
+
+    #### #### canvas functions #### ####
+
     def plot_current_hist(self, hist_functions):
         """Reset the plots to show the current data stored in the image handler.
-        hist_functions (must be a list) is used to make the histogram and allows 
-        the toggling of different functions that may or may not update the 
+        hist_functions (must be a list) is used to make the histogram and allows
+        the toggling of different functions that may or may not update the
         threshold value."""
         # update the histogram and threshold estimate
         for hf in hist_functions:
             bins, occ, thresh = hf()
             idx = np.where([x.histogram == hf or x.hist_and_thresh == hf
                     for x in self.image_handler])[0][0]
-            
+
             self.hist_canvas[idx].clear()
             self.hist_canvas[idx].plot(bins, occ, stepMode=True, pen='k',
                                     fillLevel=0, brush = (220,220,220,220)) # histogram
             self.hist_canvas[idx].plot([thresh]*2, [0, max(occ)], pen='r') # threshold line
 
-    
+
     def update_im(self, event_path):
         """Receive the event path emitted from the system event handler signal
         display the image from the file in the image canvas"""
@@ -1475,7 +1475,7 @@ class main_window(QMainWindow):
         self.im_canvas.setImage(im_vals)
         self.im_hist.setLevels(np.min(im_vals), np.max(im_vals))
         self.capture_canvas.setImage(im_vals)
-        
+
     def update_plot(self, event_path):
         """Receive the event path emitted from the system event handler signal
         process the file in the event path with the image handler and update
@@ -1487,7 +1487,7 @@ class main_window(QMainWindow):
             im_han.process(event_path)
         t2 = time.time()
         self.int_time = t2 - t1
-        
+
         # display the name of the most recent file
         self.recent_label.setText('Just processed: '+os.path.basename(event_path))
         self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # update the displayed plot
@@ -1504,7 +1504,7 @@ class main_window(QMainWindow):
             im_han.process(event_path)
         t2 = time.time()
         self.int_time = t2 - t1
-        
+
         # display the name of the most recent file
         self.recent_label.setText('Just processed: '+os.path.basename(event_path))
         self.plot_current_hist([x.histogram for x in self.image_handler]) # update the displayed plot
@@ -1514,7 +1514,7 @@ class main_window(QMainWindow):
         """Receive event paths emitted from the system event handler signal
         for the first '# omit' events, only save the files
         then for '# hist' events, add files to a histogram,
-        save the histogram 
+        save the histogram
         repeat this for the user variables in the multi-run list,
         then return to normal operation as set by the histogram binning"""
         if self.mr['v'] < np.size(self.mr['var list']):
@@ -1537,7 +1537,7 @@ class main_window(QMainWindow):
             if self.mr['o'] == self.mr['# omit'] and self.mr['h'] == self.mr['# hist']:
                 self.mr['o'], self.mr['h'] = 0, 0 # reset counters
                 self.var_edit.setText(str(self.mr['var list'][self.mr['v']])) # set user variable
-                self.bins_text_edit(text='reset') # set histogram bins 
+                self.bins_text_edit(text='reset') # set histogram bins
                 success = self.update_fit()       # get best fit
                 if not success:                   # if fit fails, use peak search
                     self.update_stats()
@@ -1546,18 +1546,18 @@ class main_window(QMainWindow):
                         self.mr['prefix'] + '_' + str(self.mr['v']) + '.csv')
                 self.save_hist_data(
                     save_file_name=os.path.join(
-                        self.multirun_save_dir.text(), self.mr['prefix']) 
-                            + '_' + str(self.mr['v']) + '.csv', 
+                        self.multirun_save_dir.text(), self.mr['prefix'])
+                            + '_' + str(self.mr['v']) + '.csv',
                     confirm=False)# save histogram
                 for im_han in self.image_handler:
                     im_han.reset_arrays() # clear histogram
                 self.mr['v'] += 1 # increment counter
-            
+
         if self.mr['v'] == np.size(self.mr['var list']):
             self.save_varplot(
                 save_file_name=os.path.join(
-                    self.multirun_save_dir.text(), self.mr['prefix']) 
-                        + '.dat', 
+                    self.multirun_save_dir.text(), self.mr['prefix'])
+                        + '.dat',
                 confirm=False)# save measure file
             # reconnect previous signals to dir_watcher
             self.multirun_switch.setChecked(False) # reset multi-run button
@@ -1571,8 +1571,8 @@ class main_window(QMainWindow):
         self.multirun_progress.setText( # update progress label
             'User variable: %s, omit %s of %s files, %s of %s histogram files, %.3g%% complete'%(
                 self.mr['var list'][self.mr['v']], self.mr['o'], self.mr['# omit'],
-                self.mr['h'], self.mr['# hist'], 100 * ((self.mr['# omit'] + self.mr['# hist']) * 
-                self.mr['v'] + self.mr['o'] + self.mr['h']) / (self.mr['# omit'] + self.mr['# hist']) / 
+                self.mr['h'], self.mr['# hist'], 100 * ((self.mr['# omit'] + self.mr['# hist']) *
+                self.mr['v'] + self.mr['o'] + self.mr['h']) / (self.mr['# omit'] + self.mr['# hist']) /
                 np.size(self.mr['var list'])))
 
     def add_stats_to_plot(self, toggle=True):
@@ -1582,15 +1582,15 @@ class main_window(QMainWindow):
         # append current statistics to the histogram handler's list
         for idx in range(len(self.histo_handler)):
             for key in self.histo_handler[idx].temp_vals.keys():
-                self.dappend(key, self.stat_labels[self.atomX+key].text() 
+                self.dappend(key, self.stat_labels[self.atomX+key].text()
                                 if self.stat_labels[self.atomX+key].text() else 0)
             # append histogram stats to log file:
             with open(self.log_file_names[idx], 'a') as f:
-                f.write(','.join(list(map(str, 
+                f.write(','.join(list(map(str,
                         self.histo_handler[idx].temp_vals.values()))) + '\n')
         self.update_varplot_axes()  # update the plot with the new values
         self.hist_num = np.size(self.histo_handler[0].stats_dict['Hist ID'])
-        
+
     def add_to_varplot(self, hist_han):
         """The user selects which variable they want to display on the plot
         The variables are read from the x and y axis QComboBoxes
@@ -1598,12 +1598,12 @@ class main_window(QMainWindow):
         if np.size(hist_han.temp_vals) > 0:
             hist_han.xvals = hist_han.stats_dict[str(
                     self.plot_labels[0].currentText())] # set x values
-            
+
             y_label = str(self.plot_labels[1].currentText())
             hist_han.yvals = hist_han.stats_dict[y_label] # set y values
 
             try:
-                self.varplot_canvas.plot(hist_han.xvals, hist_han.yvals, 
+                self.varplot_canvas.plot(hist_han.xvals, hist_han.yvals,
                                     pen=None, symbol='o', symbolBrush=self.c[hist_han.i])
                 # add error bars if available:
                 if ('Loading probability'in y_label or 'Fidelity' in y_label
@@ -1614,21 +1614,21 @@ class main_window(QMainWindow):
                     else:
                         beam_width = 0.2
                     # add widget for errorbars
-                    err_bars = pg.ErrorBarItem(x=hist_han.xvals, 
-                                    y=hist_han.yvals, 
+                    err_bars = pg.ErrorBarItem(x=hist_han.xvals,
+                                    y=hist_han.yvals,
                                     height=hist_han.stats_dict['Error in '+y_label],
                                     beam=beam_width)
                     self.varplot_canvas.addItem(err_bars)
             except Exception: pass # probably wrong length of arrays
 
     def update_varplot_axes(self, label=''):
-        """If the user has set the toggle for the given atom, then plot its 
+        """If the user has set the toggle for the given atom, then plot its
         histogram statistics on the varplot"""
         self.varplot_canvas.clear()  # remove previous data
         for i in range(len(self.histo_handler)):
             if self.atom_varplot_toggles[self.atomX[i]].isChecked():
                 self.add_to_varplot(self.histo_handler[i])
-        
+
     def clear_varplot(self):
         """Clear the plot of histogram statistics by resetting the histo_handler.
         The data is not lost since it has been appended to the log file."""
@@ -1649,7 +1649,7 @@ class main_window(QMainWindow):
                 'log' take the path where log files are saved"""
         date = time.strftime("%Y %B %d", time.localtime()).split(" ") # day, long month, year
         if self.dir_watcher and option=='hist':    # make results path the default
-            default_path = self.dir_watcher.results_path + r'\%s\%s\%s'%(date[0], date[1], date[2]) 
+            default_path = self.dir_watcher.results_path + r'\%s\%s\%s'%(date[0], date[1], date[2])
         elif self.dir_watcher and option=='im':
             default_path = self.dir_watcher.image_storage_path
         elif option=='log':
@@ -1688,12 +1688,12 @@ class main_window(QMainWindow):
                 # get the position of the max count
                 self.image_handler[i].set_roi(im_name=file_name) # sets xc and yc
                 self.roi_edits[self.atomX[i]+self.roi_label_text[0]].setText(str(self.image_handler[i].xc)) # update loaded value
-                self.roi_edits[self.atomX[i]+self.roi_label_text[1]].setText(str(self.image_handler[i].yc)) 
+                self.roi_edits[self.atomX[i]+self.roi_label_text[1]].setText(str(self.image_handler[i].yc))
                 self.roi_edits[self.atomX[i]+self.roi_label_text[2]].setText(str(self.image_handler[i].roi_size))
                 self.roi_labels[self.atomX[i]+self.roi_label_text[0]].setText(str(self.image_handler[i].xc))
                 self.roi_labels[self.atomX[i]+self.roi_label_text[1]].setText(str(self.image_handler[i].yc))
                 self.roi_labels[self.atomX[i]+self.roi_label_text[2]].setText(str(self.image_handler[i].roi_size))
-                self.rois[i].setPos(self.image_handler[i].xc - self.image_handler[i].roi_size//2, 
+                self.rois[i].setPos(self.image_handler[i].xc - self.image_handler[i].roi_size//2,
                             self.image_handler[i].yc - self.image_handler[i].roi_size//2) # set ROI in image display
                 self.rois[i].setSize(self.image_handler[i].roi_size, self.image_handler[i].roi_size)
         except OSError:
@@ -1715,11 +1715,11 @@ class main_window(QMainWindow):
                 for i in atoms:
                     # save separate histograms for each atom, with the atom name at the start of the file
                     self.image_handler[i].save_state(
-                        os.path.join(os.path.dirname(save_file_name), 
+                        os.path.join(os.path.dirname(save_file_name),
                             self.atomX[i].replace(' ','')+os.path.basename(save_file_name)),
                         hist_header=list(self.histo_handler[i].temp_vals.keys()),
-                        hist_stats=list(self.histo_handler[i].temp_vals.values())) 
-                try: 
+                        hist_stats=list(self.histo_handler[i].temp_vals.values()))
+                try:
                     hist_num = self.histo_handler.stats_dict['Hist ID'][-1]
                 except IndexError: # if there are no values in the stats_dict yet
                     hist_num = -1
@@ -1748,21 +1748,21 @@ class main_window(QMainWindow):
                     self, 'Save File', default_path, 'dat(*.dat);;all (*)')
 
             for idx in range(len(self.histo_handler)):
-                atom_file_name = os.path.join(os.path.dirname(save_file_name), 
+                atom_file_name = os.path.join(os.path.dirname(save_file_name),
                             self.atomX[idx].replace(' ','')+os.path.basename(save_file_name))
                 with open(atom_file_name, 'w+') as f:
                     f.write('#Single Atom Image Analyser Log File: collects histogram data\n')
                     f.write('#include --[]\n')
                     f.write('#'+', '.join(self.histo_handler[idx].stats_dict.keys())+'\n')
                     for i in range(len(self.histo_handler[idx].stats_dict['Hist ID'])):
-                        f.write(','.join(list(map(str, [v[i] for v in 
+                        f.write(','.join(list(map(str, [v[i] for v in
                             self.histo_handler[idx].stats_dict.values()])))+'\n')
             if confirm:
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Information)
                 msg.setText("Plot data saved to files "+", ".join([
-                    os.path.join(os.path.dirname(save_file_name), 
-                        X.replace(' ','')+os.path.basename(save_file_name)) 
+                    os.path.join(os.path.dirname(save_file_name),
+                        X.replace(' ','')+os.path.basename(save_file_name))
                         for X in self.atomX]))
                 msg.setStandardButtons(QMessageBox.Ok)
                 msg.exec_()
@@ -1783,10 +1783,10 @@ class main_window(QMainWindow):
 
     def check_reset(self):
         """Ask the user if they would like to save/reset the current data stored"""
-        options = ['None'] + [save+X for save in ['Save first, reset ', 'reset '] 
+        options = ['None'] + [save+X for save in ['Save first, reset ', 'reset ']
                                                     for X in ['All ']+self.atomX]
         choice, ok = QInputDialog.getItem(self, 'Confirm Data Replacement',
-            "Choose the atomic species that you want to reset:", options, 
+            "Choose the atomic species that you want to reset:", options,
             current=0, editable=False)
         idxs = self.get_choice_idx(choice)
         if ok:
@@ -1803,9 +1803,9 @@ class main_window(QMainWindow):
         return choice, ok, idxs
 
     def load_empty_hist(self):
-        """Prompt the user with options to save the data and then reset the 
+        """Prompt the user with options to save the data and then reset the
         histogram"""
-        reply = QMessageBox.question(self, 'Confirm reset', 
+        reply = QMessageBox.question(self, 'Confirm reset',
             'Save the current histogram before resetting?',
             QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             QMessageBox.Cancel)
@@ -1831,10 +1831,10 @@ class main_window(QMainWindow):
             try:
                 self.recent_label.setText('Processing files...') # comes first otherwise not executed
                 if 'PyQt4' in sys.modules:
-                    file_list = QFileDialog.getOpenFileNames(self, 
+                    file_list = QFileDialog.getOpenFileNames(self,
                         'Select Files', default_path, 'Images(*.asc);;all (*)')
                 elif 'PyQt5' in sys.modules:
-                    file_list, _ = QFileDialog.getOpenFileNames(self, 
+                    file_list, _ = QFileDialog.getOpenFileNames(self,
                         'Select Files', default_path, 'Images(*.asc);;all (*)')
                 for file_name in file_list:
                     for im_han in self.image_handler:
@@ -1855,7 +1855,7 @@ class main_window(QMainWindow):
         Use these to select the image files from the current image storage path.
         Sequentially process the images then update the histogram"""
         default_range = ''
-        image_storage_path = self.path_label['Image Storage Path: '].text() + '\%s\%s\%s'%(self.date[3],self.date[2],self.date[0])  
+        image_storage_path = self.path_label['Image Storage Path: '].text() + '\%s\%s\%s'%(self.date[3],self.date[2],self.date[0])
         date = self.date[0]+self.date[1]+self.date[3]
         if self.image_handler[0].im_num > 0: # defualt load all files in folder
             default_range = '0 - ' + str(self.image_handler[0].im_num)
@@ -1867,13 +1867,13 @@ class main_window(QMainWindow):
                 minmax = file_range.split('-')
                 if np.size(minmax) == 1: # only entered one file number
                     file_list = [
-                        os.path.join(image_storage_path, 
+                        os.path.join(image_storage_path,
                             '_' + date + '_' + minmax[0].replace(' ','') + '.asc')]
                 if np.size(minmax) == 2:
                     file_list = [
-                        os.path.join(image_storage_path, 
-                            '_' + date + '_' + dfn + '.asc') for dfn in list(map(str, 
-                            range(int(minmax[0]), int(minmax[1]))))] 
+                        os.path.join(image_storage_path,
+                            '_' + date + '_' + dfn + '.asc') for dfn in list(map(str,
+                            range(int(minmax[0]), int(minmax[1]))))]
             for file_name in file_list:
                 try:
                     for im_han in self.image_handler:
@@ -1894,11 +1894,11 @@ class main_window(QMainWindow):
         if ok:
             try:
                 for im_han in self.image_handler: # load separate csv files for each atom
-                    if 'PyQt4' in sys.modules: 
-                        file_name = QFileDialog.getOpenFileName(self, 'Select File for '+im_han.X, 
+                    if 'PyQt4' in sys.modules:
+                        file_name = QFileDialog.getOpenFileName(self, 'Select File for '+im_han.X,
                                                             default_path, 'csv(*.csv);;all (*)')
                     elif 'PyQt5' in sys.modules:
-                        file_name, _ = QFileDialog.getOpenFileName(self, 'Select File for '+im_han.X, 
+                        file_name, _ = QFileDialog.getOpenFileName(self, 'Select File for '+im_han.X,
                                                             default_path, 'csv(*.csv);;all (*)')
                     im_han.load_from_csv(file_name)
                 self.update_stats()
@@ -1923,11 +1923,11 @@ class main_window(QMainWindow):
         default_path = self.get_default_path(option='log')
         try:
             for hist_han in self.histo_handler:
-                if 'PyQt4' in sys.modules: 
-                    file_name = QFileDialog.getOpenFileName(self, 'Select File for '+hist_han.X, 
+                if 'PyQt4' in sys.modules:
+                    file_name = QFileDialog.getOpenFileName(self, 'Select File for '+hist_han.X,
                                                             default_path, 'dat(*.dat);;all (*)')
                 elif 'PyQt5' in sys.modules:
-                    file_name, _ = QFileDialog.getOpenFileName(self, 'Select File for '+hist_han.X, 
+                    file_name, _ = QFileDialog.getOpenFileName(self, 'Select File for '+hist_han.X,
                                                             default_path, 'dat(*.dat);;all (*)')
 
                     hist_han.load_from_log(file_name)
@@ -1936,8 +1936,8 @@ class main_window(QMainWindow):
             pass # user cancelled - file not found
 
 
-    #### #### testing functions #### #### 
-        
+    #### #### testing functions #### ####
+
     def print_times(self, unit="s"):
         """Display the times measured for functions"""
         scale = 1
@@ -1960,10 +1960,10 @@ class main_window(QMainWindow):
                 self.dir_watcher.event_handler.write_t*scale)+unit)
             print("File copying duration: %.4g "%(
                 self.dir_watcher.event_handler.copy_t*scale)+unit)
-        else: 
+        else:
             print("Initiate the directory watcher before testing timings")
 
-    #### #### UI management functions #### #### 
+    #### #### UI management functions #### ####
 
     def closeEvent(self, event):
         """Prompt user to save data on closing"""
@@ -1976,7 +1976,7 @@ class main_window(QMainWindow):
         if reply == QMessageBox.Save:
             self.save_hist_data()         # save current state
             if self.dir_watcher:          # make sure that the directory watcher stops
-                self.dir_watcher.observer.stop()   
+                self.dir_watcher.observer.stop()
             event.accept()
         elif reply == QMessageBox.Discard:
             if self.dir_watcher: # make sure that the directory watcher stops
@@ -1985,7 +1985,7 @@ class main_window(QMainWindow):
         else:
             event.ignore()
 
-####    ####    ####    #### 
+####    ####    ####    ####
 
 def run():
     """Initiate an app to run the program
@@ -1993,13 +1993,13 @@ def run():
     app = QApplication.instance()
     standalone = app is None # false if there is already an app instance
     if standalone: # if there isn't an instance, make one
-        app = QApplication(sys.argv) 
-        
+        app = QApplication(sys.argv)
+
     main_win = main_window()
     main_win.showMaximized() # display app over the full screen
     if standalone: # if an app instance was made, execute it
         sys.exit(app.exec_()) # when the window is closed, the python code also stops
 
-            
+
 if __name__ == "__main__":
     run()
