@@ -38,7 +38,7 @@ import directoryWatcher as dw # use watchdog to get file creation events
 import fitCurve as fc   # custom class to get best fit parameters using curve_fit
 import ctypes
 import ctypes.util
-import camera_try_stub
+import camera_try
 import frameCheckThread
 ####    ####    ####    ####
 
@@ -91,14 +91,13 @@ class main_window(QMainWindow):
         self.plot_time = 0     # time taken to plot the graph        
         
     def initCamera(self):
-        camera_try = camera_try_stub
         dcam = ctypes.windll.dcamapi
         print(dcam)
         paraminit = camera_try.DCAMAPI_INIT(0, 0, 0, 0, None, None) 
         paraminit.size = ctypes.sizeof(paraminit)
         error_code = dcam.dcamapi_init(ctypes.byref(paraminit))
-        #if (error_code != camera_try.DCAMERR_NOERROR):
-        #    raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
+        if (error_code != camera_try.DCAMERR_NOERROR):
+            raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
         
         n_cameras = paraminit.iDeviceCount    
         print("found: {} cameras".format(n_cameras))
@@ -139,6 +138,7 @@ class main_window(QMainWindow):
         self.centre_widget.layout.addWidget(self.tabs)
         self.centre_widget.setLayout(self.centre_widget.layout)
         self.setCentralWidget(self.centre_widget)
+        self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
         self.acquisition_mode = "run_till_abort"
         
         # validators for user input
@@ -220,21 +220,33 @@ class main_window(QMainWindow):
         self.tabs.addTab(capture_tab,"Capture")  
         
         i=0
-        start_button = QPushButton("Start Live Acquire", self)
+        live_text = QLabel("Live:", self)
+        live_text.setFont(QFont(live_text.font().family(), 12))
+        live_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(live_text, 1,i, 1,1)
+        i+=1
+        
+        start_button = QPushButton("Start", self)
         start_button.resize(start_button.sizeHint())
         start_button.clicked.connect(self.start_live)
         capture_grid.addWidget(start_button, 1,i, 1,1)
         i+=1
         
-        stop_button = QPushButton("Stop Live Acquire", self)
+        stop_button = QPushButton("Stop", self)
         stop_button.resize(stop_button.sizeHint())
         stop_button.clicked.connect(self.start_live)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1
         
-        stop_button = QPushButton("Start Frame Acquire", self)
+        fixed_frame_text = QLabel("Fixed Frame:", self)
+        fixed_frame_text.setFont(QFont(fixed_frame_text.font().family(), 12))
+        fixed_frame_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(fixed_frame_text, 1,i, 1,1)
+        i+=1
+        
+        stop_button = QPushButton("Capture", self)
         stop_button.resize(stop_button.sizeHint())
-        stop_button.clicked.connect(self.start_frame_acquire)
+        stop_button.clicked.connect(self.fixed_frame_capture)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1 
         i+=1 
@@ -261,7 +273,8 @@ class main_window(QMainWindow):
         frame_dropbox = QComboBox(self)
         frame_options = ["1", "2", "3", "4", "5"]
         frame_dropbox.addItems(frame_options)
-        self.frame_selection_policy = frame_dropbox.insertPolicy()        
+        self.frame_selection_policy = frame_dropbox.insertPolicy() 
+        self.frame_count = "1"
         capture_grid.addWidget(frame_dropbox, 1,i, 1,1)
         i+=1
 
@@ -749,14 +762,18 @@ class main_window(QMainWindow):
         #frame_width, frame_height = frames[1][0], frames[1][1]
         frame_list = frames[0]
         if len(frame_list) >= 1:
-            return frame_list.last()
+            return [frame_list[-1], frames[1]]
         else:
             return None
     
     def update_image(self):
         latest_frame = self.get_latest_frame()
+        img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
+        img = pg.image(img,)
+        from PIL import Image
+        img = Image.fromarray(img, 'L')
         if latest_frame != None:
-            self.capture_canvas.setImage(latest_frame)
+            self.capture_canvas.setImage(img)
             return True
         else:
             return False
@@ -772,11 +789,13 @@ class main_window(QMainWindow):
             self.hcam.stopAcquisition()
             self.frame_thread.stop()\
         
-    def start_frame_acquire(self):
-        if self.aquisition_mode == "fixed_length":
+    def fixed_frame_capture(self):
+        if self.acquisition_mode == "fixed_length":
             self.frame_thread = frameCheckThread.FrameCheckThreadFixed(self)
             self.hcam.startAcquisition()
-            self.frame_thread.start()        
+            #self.frame_thread.start()        
+            time.sleep(1)
+            self.update_image()
         
     def set_acquisition_live(self):
         self.acquisition_mode = "run_till_abort"
