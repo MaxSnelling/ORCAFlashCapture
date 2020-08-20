@@ -60,7 +60,7 @@ class system_event_handler(FileSystemEventHandler, QThread):
         self.wait_for_file(event.src_path) # wait until file has been written        
         self.write_t = time.time() - t0
         new_file_name = os.path.join(self.image_storage_path,
-                self.date+event.src_path.split(".")[-1])
+                self.date+'.'+event.src_path.split(".")[-1])
         self.copy_t = time.time()
         if os.path.isfile(new_file_name): # don't overwrite files
             new_file_name = os.path.join(self.image_storage_path, 

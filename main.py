@@ -38,7 +38,9 @@ import directoryWatcher as dw # use watchdog to get file creation events
 import fitCurve as fc   # custom class to get best fit parameters using curve_fit
 import ctypes
 import ctypes.util
-import camera_try
+#import camera_try
+import camera_try_stub as camera_try
+from skimage.io import imsave
 import frameCheckThread
 ####    ####    ####    ####
 
@@ -96,8 +98,8 @@ class main_window(QMainWindow):
         paraminit = camera_try.DCAMAPI_INIT(0, 0, 0, 0, None, None)
         paraminit.size = ctypes.sizeof(paraminit)
         error_code = dcam.dcamapi_init(ctypes.byref(paraminit))
-        if (error_code != camera_try.DCAMERR_NOERROR):
-            raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
+        #if (error_code != camera_try.DCAMERR_NOERROR):
+        #    raise camera_try.DCAMException("DCAM initialization failed with error code " + str(error_code))
 
         n_cameras = paraminit.iDeviceCount
         print("found: {} cameras".format(n_cameras))
@@ -296,17 +298,18 @@ class main_window(QMainWindow):
         threshold_input.setMaximum(10)
         capture_grid.addWidget(threshold_input, 1,i, 1,1)
         threshold_input.resize(threshold_input.sizeHint())
+        i+=1
 
         capture_text = QLabel("Capture", self)
         capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
         capture_text.setAlignment(Qt.AlignCenter)
-        capture_grid.addWidget(capture_text, 0,0, 1,i+1)
+        capture_grid.addWidget(capture_text, 0,0, 1,i)
 
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
-        capture_grid.addWidget(capture_im_widget, 2,0, 1,7)
+        capture_grid.addWidget(capture_im_widget, 2,0, 1,i)
 
         #### tab for settings  ####
         settings_tab = QWidget()
@@ -767,13 +770,21 @@ class main_window(QMainWindow):
             return None
 
     def update_image(self):
-        latest_frame = self.get_latest_frame()
-        img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
-        img = pg.image(img,)
         from PIL import Image
-        img = Image.fromarray(img, 'L')
+        latest_frame = self.get_latest_frame()
         if latest_frame != None:
+            img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
+            #pg.image(img,)
             self.capture_canvas.setImage(img)
+            
+            #PNG Method
+            #rescaled = (255.0 / img.max() * (img - img.min())).astype(np.uint8)
+            #im = Image.fromarray(rescaled)
+            #im.save(os.path.join(self.dir_watcher.image_read_path, 'img.png'))
+            
+            #Numpy Method
+            np.save(os.path.join(self.dir_watcher.image_read_path, 'img.npy'))
+            
             return True
         else:
             return False
@@ -787,7 +798,7 @@ class main_window(QMainWindow):
     def stop_live(self):
         if self.acquisition_mode == "run_till_abort":
             self.hcam.stopAcquisition()
-            self.frame_thread.stop()\
+            self.frame_thread.stop()
 
     def fixed_frame_capture(self):
         if self.acquisition_mode == "fixed_length":
@@ -796,6 +807,7 @@ class main_window(QMainWindow):
             #self.frame_thread.start()
             time.sleep(1)
             self.update_image()
+            self.hcam.stopAcquisition()
 
     def set_acquisition_live(self):
         self.acquisition_mode = "run_till_abort"
@@ -1480,7 +1492,6 @@ class main_window(QMainWindow):
         """Receive the event path emitted from the system event handler signal
         process the file in the event path with the image handler and update
         the figure"""
-        print("1")
         # add the count
         t1 = time.time()
         for im_han in self.image_handler:
@@ -1492,7 +1503,6 @@ class main_window(QMainWindow):
         self.recent_label.setText('Just processed: '+os.path.basename(event_path))
         self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # update the displayed plot
         self.plot_time = time.time() - t2
-        print("2")
 
     def update_plot_only(self, event_path):
         """Receive the event path emitted from the system event handler signal

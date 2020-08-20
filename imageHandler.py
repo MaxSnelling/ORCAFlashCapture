@@ -97,8 +97,13 @@ class image_handler:
         print(self.pic_size)
         #return np.loadtxt(im_name, delimiter=None,
         #                      usecols=range(1,self.pic_size+1))
-        image = Image.open(im_name)
-        return np.asarray(image)
+        
+        #PNG Method
+        #image = Image.open(im_name)
+        #return np.asarray(image)
+        
+        #Numpy Method
+        return np.load(im_name)
         
     def process(self, im_name):
         """Get the data from an image """
