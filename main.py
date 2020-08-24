@@ -40,7 +40,6 @@ import ctypes
 import ctypes.util
 #import camera_try
 import camera_try_stub as camera_try
-from skimage.io import imsave
 import frameCheckThread
 ####    ####    ####    ####
 
@@ -76,7 +75,7 @@ class main_window(QMainWindow):
         self.bias = 697   # bias off set from EMCCD
         self.Nr   = 8.8   # read-out noise from EMCCD
         self.dir_watcher = None  # a button will initiate the dir watcher
-        self.atomX = ['Cs ', 'Rb ']   # term labels for atoms
+        self.atomX = ['Cs ']   # term labels for atoms
         self.c = [(255,127,14), (31,119,180)] # colours to plot in
         self.image_handler = [ih.image_handler(i, self.atomX[i]) for i in range(len(self.atomX))] # class to process images
         self.histo_handler = [hh.histo_handler(i, self.atomX[i]) for i in range(len(self.atomX))] # class to process histograms
@@ -309,6 +308,11 @@ class main_window(QMainWindow):
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
+        capture_roi = pg.ROI([0.2,0.2], [0.6,0.6], snapSize=0.001, scaleSnap=True,
+                             rotatable=False, translateSnap=True, 
+                             pen=pg.mkPen(color=self.c[0],width=4))
+        capture_roi.setZValue(10)
+        capture_viewbox.addItem(capture_roi)
         capture_grid.addWidget(capture_im_widget, 2,0, 1,i)
 
         #### tab for settings  ####
@@ -501,8 +505,8 @@ class main_window(QMainWindow):
         for i in range(len(self.hist_canvas)):
             self.hist_canvas[i].getAxis('bottom').tickFont = font
             self.hist_canvas[i].getAxis('left').tickFont = font # not doing anything...
-        hist_grid.addWidget(self.hist_canvas[0], 1,0, 1,8)  # allocate space in the grid
-        hist_grid.addWidget(self.hist_canvas[1], 3,0, 1,8)
+            hist_grid.addWidget(self.hist_canvas[i], 1+2*i,0, 1,8)  # allocate space in the grid
+        #hist_grid.addWidget(self.hist_canvas[1], 3,0, 1,8)
         
         # toggle whether to fix threshold at user specified value
         self.thresh_toggle = QAction('User Threshold', self, checkable=True)
@@ -602,10 +606,8 @@ class main_window(QMainWindow):
         viewbox.addItem(self.im_canvas)
         im_grid.addWidget(im_widget, 1,0, 8,8)
         # make a ROIs that the user can drag. One for Cs, one for Rb
-        self.rois = np.array((pg.ROI([0,0], [1,1], snapSize=1, scaleSnap=True,
-                                translateSnap=True, pen=pg.mkPen(color=self.c[0],width=4)),
-                    pg.ROI([0,1], [1,1], snapSize=1, scaleSnap=True,
-                                translateSnap=True, pen=pg.mkPen(color=self.c[1],width=4))))
+        self.rois = np.array([pg.ROI([0,0], [1,1], snapSize=1, scaleSnap=True, 
+                                translateSnap=True, pen=pg.mkPen(color=self.c[0],width=4))])
         for roi in self.rois:
             roi.addScaleHandle([1,1], [0.5,0.5]) # allow user to adjust ROI size
             viewbox.addItem(roi)
@@ -770,7 +772,6 @@ class main_window(QMainWindow):
             return None
 
     def update_image(self):
-        from PIL import Image
         latest_frame = self.get_latest_frame()
         if latest_frame != None:
             img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
@@ -778,6 +779,7 @@ class main_window(QMainWindow):
             self.capture_canvas.setImage(img)
             
             #PNG Method
+            #from PIL import Image
             #rescaled = (255.0 / img.max() * (img - img.min())).astype(np.uint8)
             #im = Image.fromarray(rescaled)
             #im.save(os.path.join(self.dir_watcher.image_read_path, 'img.png'))
@@ -848,7 +850,7 @@ class main_window(QMainWindow):
         l = int(0.5*(xw+yw))  # want a square ROI
         # note: setting the origin as bottom left but the image has origin top left
         xc, yc = int(x0 + l//2), int(y0 + l//2)  # centre
-
+        
         new_dim = [xc, yc, l]  # new dimensions for ROI
         self.image_handler[roi_idx].set_roi(dimensions=new_dim)
         for i in range(len(new_dim)):
@@ -1319,7 +1321,7 @@ class main_window(QMainWindow):
         bias from dark counts. Use the fits to get histogram statistics, then set
         the threshold to maximise fidelity. Iterate until the threshold converges."""
         # only update if a histogram exists
-        if self.image_handler[0].im_num > 0 and self.image_handler[1].im_num > 0:
+        if self.image_handler[0].im_num > 0:
             # store the previous values
             oldthresh = np.array([x.thresh for x in self.image_handler])
             diff = np.ones(len(oldthresh))        # convergence criterion
