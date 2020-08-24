@@ -951,15 +951,16 @@ class main_window(QMainWindow):
     def bins_text_edit(self, text):
         """Update the histogram bins every time a text edit is made by the user
         to one of the line edit widgets"""
-        if self.bin_actions[1].isChecked(): # [auto, manual, no update]
-            # 0: Cs, 1: Rb
-            idxkey = self.get_atom_idx(self.hist_edits.items(), self.sender())
-            if idxkey:  # update just one atom
-                idxs = [idxkey[0]]
-                keys = [idxkey[1]]
-            else:       # update both atoms
-                idxs = range(len(self.atomX))
-                keys = self.atomX
+        # 0: Cs, 1: Rb
+        idxkey = self.get_atom_idx(self.hist_edits.items(), self.sender())
+        if idxkey:  # update just one atom
+            idxs = [idxkey[0]]
+            keys = [idxkey[1]]
+        else:       # update both atoms
+            idxs = range(len(self.atomX))
+            keys = self.atomX
+            
+        if self.bin_actions[1].isChecked(): # [auto, manual, no update]            
             for idx, key in list(map(list, zip(*(idxs, keys)))): # transpose iterables
                 # min counts, max counts, # bins
                 new_vals = [self.hist_edits[key[:3]+self.hist_label_text[0]].text(),
@@ -985,20 +986,21 @@ class main_window(QMainWindow):
 
                 # set the new values for the bins of the image handler
                 self.image_handler[idx].bin_array = np.linspace(min_bin, max_bin, num_bins)
-
-                # set the new threshold if supplied
-                if self.thresh_toggle.isChecked():
-                    try:
-                        # get threshold from QLineEdit
-                        self.image_handler[idx].thresh = float(
-                                self.hist_edits[key[:3]+self.hist_label_text[3]].text())
-                        # show the new threshold in the label
-                        self.stat_labels[key[:3]+'Threshold'].setText(
-                                str(int(self.image_handler[idx].thresh)))
-                    except ValueError: pass # user switched toggle before inputing text
-                    self.plot_current_hist([x.histogram for x in self.image_handler]) # doesn't update thresh
-                else:
-                    self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # updates thresh
+                
+        for idx, key in list(map(list, zip(*(idxs, keys)))): # transpose iterables
+            # set the new threshold if supplied
+            if self.thresh_toggle.isChecked():
+                try:
+                    # get threshold from QLineEdit
+                    self.image_handler[idx].thresh = float(
+                            self.hist_edits[key[:3]+self.hist_label_text[3]].text())
+                    # show the new threshold in the label
+                    self.stat_labels[key[:3]+'Threshold'].setText(
+                            str(int(self.image_handler[idx].thresh)))
+                except ValueError: pass # user switched toggle before inputing text
+                self.plot_current_hist([x.histogram for x in self.image_handler]) # doesn't update thresh
+            else:
+                self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # updates thresh
 
 
     #### #### toggle functions #### ####
@@ -1273,7 +1275,7 @@ class main_window(QMainWindow):
             self.image_handler[i].peak_widths = np.array((best_fit.ps[2], 0))
             self.plot_current_hist([self.image_handler[i].histogram]) # clear then update histogram plot
             xs = np.linspace(min(best_fit.x), max(best_fit.x), 100) # interpolate
-            self.hist_canvas.plot(xs, best_fit.gauss(xs, *best_fit.ps), pen='b') # plot best fit
+            self.hist_canvas[i].plot(xs, best_fit.gauss(xs, *best_fit.ps), pen='b') # plot best fit
             # store the calculated histogram statistics as temp, don't add to plot
             self.histo_handler[i].temp_vals['Hist ID'] = int(self.hist_num)
             file_list = [x for x in self.image_handler[i].files if x]
@@ -1594,8 +1596,8 @@ class main_window(QMainWindow):
         # append current statistics to the histogram handler's list
         for idx in range(len(self.histo_handler)):
             for key in self.histo_handler[idx].temp_vals.keys():
-                self.dappend(key, self.stat_labels[self.atomX+key].text()
-                                if self.stat_labels[self.atomX+key].text() else 0)
+                self.dappend(key, self.stat_labels[self.atomX[idx]+key].text()
+                                if self.stat_labels[self.atomX[idx]+key].text() else 0)
             # append histogram stats to log file:
             with open(self.log_file_names[idx], 'a') as f:
                 f.write(','.join(list(map(str,
