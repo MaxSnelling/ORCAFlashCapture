@@ -30,6 +30,30 @@ class FrameCheckThreadFixed(threading.Thread):
         while self.running:
             success = self.app.update_image()
             if success:
+                self.app.hcam.stopAcquisition()
                 break
             time.sleep(.100)
+    
+    def stop(self):
+        self.running = False
+            
+class FrameCheckThreadTrigger(threading.Thread):
+    """Frame check thread for trigger feed"""
+
+    def __init__(self, app):
+        threading.Thread.__init__(self)
+        self.app = app
+        self.running = True
+
+    def run(self):
+        while self.running:
+            success = self.app.update_image()
+            if success:
+                self.app.hcam.stopAcquisition()
+                self.app.hcam.startAcquisition()
+            time.sleep(.100)
+            
+    def stop(self):
+        self.running = False
+        self.app.hcam.stopAcquisition()
         

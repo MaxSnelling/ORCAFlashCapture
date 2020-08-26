@@ -141,6 +141,7 @@ class main_window(QMainWindow):
         self.setCentralWidget(self.centre_widget)
         self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
         self.acquisition_mode = "run_till_abort"
+        self.trigger_mode = "intenal"
 
         # validators for user input
         reg_exp = QRegExp(r'([0-9]+(\.[0-9]+)?,?)+')
@@ -238,17 +239,49 @@ class main_window(QMainWindow):
         stop_button.clicked.connect(self.start_live)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1
+        i+=1
+        
+        live_text = QLabel("Trigger:", self)
+        live_text.setFont(QFont(live_text.font().family(), 12))
+        live_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(live_text, 1,i, 1,1)
+        i+=1
+        
+        internal_trigger_button = QPushButton("Internal", self)
+        internal_trigger_button.resize(internal_trigger_button.sizeHint())
+        internal_trigger_button.clicked.connect(self.set_trigger_internal)
+        capture_grid.addWidget(internal_trigger_button, 1,i, 1,1)
+        i+=1
+        
+        external_trigger_button = QPushButton("External", self)
+        external_trigger_button.resize(external_trigger_button.sizeHint())
+        external_trigger_button.clicked.connect(self.set_trigger_external)
+        capture_grid.addWidget(external_trigger_button, 1,i, 1,1)
+        i+=1
+        
+        start_external_button = QPushButton("Start", self)
+        start_external_button.resize(start_button.sizeHint())
+        start_external_button.clicked.connect(self.start_trigger_capture)
+        capture_grid.addWidget(start_external_button, 1,i, 1,1)
+        i+=1
 
+        stop_external_button = QPushButton("Stop", self)
+        stop_external_button.resize(stop_button.sizeHint())
+        stop_external_button.clicked.connect(self.stop_trigger_capture)
+        capture_grid.addWidget(stop_external_button, 1,i, 1,1)
+        i+=1
+        i+=1
+        
         fixed_frame_text = QLabel("Fixed Frame:", self)
         fixed_frame_text.setFont(QFont(fixed_frame_text.font().family(), 12))
         fixed_frame_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(fixed_frame_text, 1,i, 1,1)
         i+=1
 
-        stop_button = QPushButton("Capture", self)
-        stop_button.resize(stop_button.sizeHint())
-        stop_button.clicked.connect(self.fixed_frame_capture)
-        capture_grid.addWidget(stop_button, 1,i, 1,1)
+        capture_button = QPushButton("Capture", self)
+        capture_button.resize(capture_button.sizeHint())
+        capture_button.clicked.connect(self.fixed_frame_capture)
+        capture_grid.addWidget(capture_button, 1,i, 1,1)
         i+=1
         i+=1
 
@@ -308,11 +341,11 @@ class main_window(QMainWindow):
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
-        capture_roi = pg.ROI([0.2,0.2], [0.6,0.6], snapSize=0.001, scaleSnap=True,
-                             rotatable=False, translateSnap=True, 
-                             pen=pg.mkPen(color=self.c[0],width=4))
-        capture_roi.setZValue(10)
-        capture_viewbox.addItem(capture_roi)
+        #capture_roi = pg.ROI([0.2,0.2], [0.6,0.6], snapSize=0.001, scaleSnap=True,
+        #                     rotatable=False, translateSnap=True, 
+        #                     pen=pg.mkPen(color=self.c[0],width=4))
+        #capture_roi.setZValue(10)
+        #capture_viewbox.addItem(capture_roi)
         capture_grid.addWidget(capture_im_widget, 2,0, 1,i)
 
         #### tab for settings  ####
@@ -767,6 +800,7 @@ class main_window(QMainWindow):
         #frame_width, frame_height = frames[1][0], frames[1][1]
         frame_list = frames[0]
         if len(frame_list) >= 1:
+            # Returns newest frame
             return [frame_list[-1], frames[1]]
         else:
             return None
@@ -775,7 +809,6 @@ class main_window(QMainWindow):
         latest_frame = self.get_latest_frame()
         if latest_frame != None:
             img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
-            #pg.image(img,)
             self.capture_canvas.setImage(img)
             
             #PNG Method
@@ -785,29 +818,40 @@ class main_window(QMainWindow):
             #im.save(os.path.join(self.dir_watcher.image_read_path, 'img.png'))
             
             #Numpy Method
-            np.save(os.path.join(self.dir_watcher.image_read_path, 'img.npy'))
+            np.save(os.path.join(self.dir_watcher.image_read_path, 'img.npy'), img)
             
             return True
         else:
             return False
 
     def start_live(self):
-        if self.acquisition_mode == "run_till_abort":
+        if self.acquisition_mode == "run_till_abort" and self.trigger_mode == "internal":
             self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
             self.hcam.startAcquisition()
             self.frame_thread.start()
 
     def stop_live(self):
-        if self.acquisition_mode == "run_till_abort":
+        if self.acquisition_mode == "run_till_abort" and self.trigger_mode == "internal":
             self.hcam.stopAcquisition()
+            self.frame_thread.stop()
+    
+    def start_trigger_capture(self):
+        if self.trigger_mode == "external":
+            self.frame_thread = frameCheckThread.FrameCheckThreadTrigger(self)
+            self.hcam.setACQMode("fixed_length", 1)
+            self.hcam.startAcquisition()
+            self.frame_thread.start()
+        
+    def stop_trigger_capture(self):
+        if self.trigger_mode == "external":
             self.frame_thread.stop()
 
     def fixed_frame_capture(self):
-        if self.acquisition_mode == "fixed_length":
+        if self.acquisition_mode == "fixed_length" and self.trigger_mode == "internal": 
             self.frame_thread = frameCheckThread.FrameCheckThreadFixed(self)
             self.hcam.startAcquisition()
-            #self.frame_thread.start()
-            time.sleep(1)
+            self.frame_thread.start()
+            time.sleep(0.5)
             self.update_image()
             self.hcam.stopAcquisition()
 
@@ -822,7 +866,19 @@ class main_window(QMainWindow):
     def set_frame_count(self):
         self.frame_count = self.frame_selection_policy
         self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
-
+        
+    def set_trigger_external(self):
+        self.trigger_mode = "external"
+        
+        self.hcam.setPropertyValue("trigger_source", self.hcam.DCAMPROP_TRIGGERSOURCE__EXTERNAL) 
+        self.hcam.setPropertyValue("trigger_mode", self.hcam.DCAMPROP_TRIGGER_MODE__START)
+        self.hcam.setPropertyValue("trigger_polarity", self.hcam.DCAMPROP_TRIGGERPOLARITY__POSITIVE)        
+    
+    def set_trigger_internal(self):
+        self.trigger_mode = "internal"
+        
+        self.hcam.setPropertyValue("trigger_source", self.hcam.DCAMPROP_TRIGGERSOURCE__INTERNAL) 
+        self.hcam.setPropertyValue("trigger_mode", self.hcam.DCAMPROP_TRIGGER_MODE__NORMAL)        
 
     #### #### user input functions #### ####
 
@@ -1064,6 +1120,7 @@ class main_window(QMainWindow):
                 # store the calculated histogram statistics as temp, don't add to plot
                 self.histo_handler[i].temp_vals['Hist ID'] = int(self.hist_num)
                 file_list = [x for x in self.image_handler[i].files if x]
+                print(file_list)
                 self.histo_handler[i].temp_vals['Start file #'] = min(map(int, file_list))
                 self.histo_handler[i].temp_vals['End file #'] = max(map(int, file_list))
                 self.histo_handler[i].temp_vals['ROI xc ; yc ; size'] = ' ; '.join([self.roi_edits[self.atomX[i]+label].text()
