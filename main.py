@@ -870,15 +870,15 @@ class main_window(QMainWindow):
     def set_trigger_external(self):
         self.trigger_mode = "external"
         
-        self.hcam.setPropertyValue("trigger_source", self.hcam.DCAMPROP_TRIGGERSOURCE__EXTERNAL) 
-        self.hcam.setPropertyValue("trigger_mode", self.hcam.DCAMPROP_TRIGGER_MODE__START)
-        self.hcam.setPropertyValue("trigger_polarity", self.hcam.DCAMPROP_TRIGGERPOLARITY__POSITIVE)        
+        self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__EXTERNAL) 
+        self.hcam.setPropertyValue("trigger_mode", camera_try.DCAMPROP_TRIGGER_MODE__NORMAL)
+        self.hcam.setPropertyValue("trigger_polarity", camera_try.DCAMPROP_TRIGGERPOLARITY__POSITIVE)        
     
     def set_trigger_internal(self):
         self.trigger_mode = "internal"
         
-        self.hcam.setPropertyValue("trigger_source", self.hcam.DCAMPROP_TRIGGERSOURCE__INTERNAL) 
-        self.hcam.setPropertyValue("trigger_mode", self.hcam.DCAMPROP_TRIGGER_MODE__NORMAL)        
+        self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__INTERNAL) 
+        self.hcam.setPropertyValue("trigger_mode", camera_try.DCAMPROP_TRIGGER_MODE__NORMAL)        
 
     #### #### user input functions #### ####
 
