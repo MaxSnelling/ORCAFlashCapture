@@ -27,7 +27,7 @@ except ModuleNotFoundError:
     from PyQt5.QtGui import (QGridLayout, QMessageBox, QLineEdit, QIcon,
             QFileDialog, QDoubleValidator, QIntValidator, QComboBox, QMenu,
             QActionGroup, QVBoxLayout, QFont, QRegExpValidator, QSpinBox, QSplitter,
-            QRadioButton)
+            QRadioButton, QCheckBox)
     from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget, QTabWidget,
         QAction, QMainWindow, QLabel, QInputDialog)
 # change directory to this file's location
@@ -142,6 +142,7 @@ class main_window(QMainWindow):
         self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
         self.acquisition_mode = "run_till_abort"
         self.trigger_mode = "intenal"
+        self.threshold_reset = False
 
         # validators for user input
         reg_exp = QRegExp(r'([0-9]+(\.[0-9]+)?,?)+')
@@ -319,17 +320,16 @@ class main_window(QMainWindow):
         i+=1
         i+=1
 
-        threshold_text = QLabel("Threshold:", self)
+        threshold_text = QLabel("Threshold Reset:", self)
         threshold_text.setFont(QFont(threshold_text.font().family(), 12))
         threshold_text.setAlignment(Qt.AlignRight)
         capture_grid.addWidget(threshold_text, 1,i, 1,1)
         i+=1
 
-        threshold_input = QSpinBox(self)
-        threshold_input.setMinimum(0)
-        threshold_input.setMaximum(10)
-        capture_grid.addWidget(threshold_input, 1,i, 1,1)
-        threshold_input.resize(threshold_input.sizeHint())
+        threshold_toggle = QCheckBox("")
+        threshold_toggle.setChecked(False)
+        threshold_toggle.stateChanged.connect(self.threshold_toggle_clicked)
+        capture_grid.addWidget(threshold_toggle, 1,i, 1,1)
         i+=1
 
         capture_text = QLabel("Capture", self)
@@ -879,6 +879,12 @@ class main_window(QMainWindow):
         
         self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__INTERNAL) 
         self.hcam.setPropertyValue("trigger_mode", camera_try.DCAMPROP_TRIGGER_MODE__NORMAL)        
+        
+    def threshold_toggle_clicked(self):
+        if self.threshold_reset:
+            self.threshold_reset = False
+        else:
+            self.threshold_reset = True
 
     #### #### user input functions #### ####
 
@@ -1539,7 +1545,30 @@ class main_window(QMainWindow):
             self.hist_canvas[idx].plot(bins, occ, stepMode=True, pen='k',
                                     fillLevel=0, brush = (220,220,220,220)) # histogram
             self.hist_canvas[idx].plot([thresh]*2, [0, max(occ)], pen='r') # threshold line
-
+            if self.threshold_reset and self.threshold_check(idx):
+                #self.hist_canvas[idx].clear()
+                pass
+    
+    def threshold_check(self, index):
+        im_han = self.image_handler[index]
+        run_number = -1
+        for x in im_han.files:
+            if x:
+                run_number += 1
+            else:
+                break
+            
+        print(run_number)
+        if im_han.atom[run_number] > 0:
+            self.reset_sequence()
+            return True
+    
+    def reset_sequence(self):
+        print("Data above threshold. Reseting sequence")
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        file = open('trigger_time.txt', 'w')
+        file.write(current_time)
+        file.close()
 
     def update_im(self, event_path):
         """Receive the event path emitted from the system event handler signal
@@ -1547,8 +1576,7 @@ class main_window(QMainWindow):
         im_vals = self.image_handler[0].load_full_im(event_path)
         self.im_canvas.setImage(im_vals)
         self.im_hist.setLevels(np.min(im_vals), np.max(im_vals))
-        self.capture_canvas.setImage(im_vals)
-
+        
     def update_plot(self, event_path):
         """Receive the event path emitted from the system event handler signal
         process the file in the event path with the image handler and update
