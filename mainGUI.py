@@ -15,6 +15,7 @@ import time
 import numpy as np
 from astropy.stats import binom_conf_interval
 import pyqtgraph as pg    # not as flexible as matplotlib but works a lot better with qt
+from matplotlib import cm
 # some python packages use PyQt4, some use PyQt5...
 try:
     from PyQt4.QtCore import QThread, pyqtSignal, QEvent, QRegExp
@@ -295,7 +296,45 @@ class main_window(QMainWindow):
         self.status_text = QLabel("Status: Stopped", self)
         self.status_text.setFont(QFont(fixed_frame_text.font().family(), 14))
         self.status_text.setAlignment(Qt.AlignCenter)
-        capture_grid.addWidget(self.status_text, 2,0, 1,i)
+        capture_grid.addWidget(self.status_text, 3,0, 1,i)
+        
+        #sub_array_label = QLabel("Sub array:", self)
+        #sub_array_label.setFont(QFont(sub_array_label.font().family(), 12))
+        #sub_array_label.setAlignment(Qt.AlignCenter)
+        #capture_grid.addWidget(sub_array_label, 2,0, 1,1)
+        
+        xsize_label = QLabel("xsize:", self)
+        xsize_label.setFont(QFont(xsize_label.font().family(), 12))
+        xsize_label.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(xsize_label, 2,0, 1,1)
+        
+        self.xsize_input = QLineEdit(self)        
+        self.xsize_input.setValidator(int_validator)
+        self.xsize_input.textChanged[str].connect(self.sub_array_x_edit)
+        #self.xsize_input.setText(self.hcam.max_width)
+        capture_grid.addWidget(self.xsize_input, 2,1, 1,2)
+        
+        ysize_label = QLabel("ysize:", self)
+        ysize_label.setFont(QFont(ysize_label.font().family(), 12))
+        ysize_label.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(ysize_label, 2,4, 1,1)
+        
+        self.ysize_input = QLineEdit(self)        
+        self.ysize_input.setValidator(int_validator)
+        self.ysize_input.textChanged[str].connect(self.sub_array_y_edit)
+        #self.ysize_input.setText(self.hcam.max_height)
+        capture_grid.addWidget(self.ysize_input, 2,5, 1,2)
+        
+        exposure_label = QLabel("Exposure:", self)
+        exposure_label.setFont(QFont(exposure_label.font().family(), 12))
+        exposure_label.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(exposure_label, 2,8, 1,1)
+        
+        self.exposure_input = QLineEdit(self)        
+        self.exposure_input.setValidator(double_validator)
+        self.exposure_input.textChanged[str].connect(self.exposure_time_edit)
+        #self.ysize_input.setText(self.hcam.getPropertyValue('exposure_time'))
+        capture_grid.addWidget(self.exposure_input, 2,9, 1,2)       
 
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
@@ -306,7 +345,7 @@ class main_window(QMainWindow):
         #                     pen=pg.mkPen(color=self.c[0],width=4))
         #capture_roi.setZValue(10)
         #capture_viewbox.addItem(capture_roi)
-        capture_grid.addWidget(capture_im_widget, 3,0, 1,i)
+        capture_grid.addWidget(capture_im_widget, 4,0, 1,i)
 
         #### tab for settings  ####
         settings_tab = QWidget()
@@ -589,8 +628,15 @@ class main_window(QMainWindow):
             for ii in range(len(self.roi_label_text)):
                 text = X + self.roi_label_text[ii]
                 self.roi_labels[text] = QLabel(text+str(ii//2), self) # default: 0,0,1
+                self.roi_labels[text].setFont(QFont(self.roi_labels[text].font().family(), 12))
+                self.roi_labels[text].setAlignment(Qt.AlignCenter)
                 im_grid.addWidget(self.roi_labels[text], 9+i,im_grid_pos, 1,1)
                 im_grid_pos += 2
+            # Display counts
+            self.counts_label = QLabel("Counts: ", self)
+            self.counts_label.setFont(QFont(self.counts_label.font().family(), 12))
+            self.counts_label.setAlignment(Qt.AlignCenter)
+            im_grid.addWidget(self.counts_label, 9+i,im_grid_pos, 1,1)
 
         # display last image if toggle is True
         im_widget = pg.GraphicsLayoutWidget() # containing widget
@@ -760,7 +806,7 @@ class main_window(QMainWindow):
         #frame_width, frame_height = frames[1][0], frames[1][1]
         frame_list = frames[0]
         if len(frame_list) >= 1:
-            # Returns newest frame
+            # Returns newest frame only
             return [frame_list[-1], frames[1]]
         else:
             return None
@@ -779,10 +825,6 @@ class main_window(QMainWindow):
             
             #Numpy Method
             np.save(os.path.join(self.dir_watcher.image_read_path, 'img.npy'), img)
-            
-            return True
-        else:
-            return False
         
     def set_status_text(self, status):
         self.status_text.setText("Status: " + status)
@@ -841,6 +883,25 @@ class main_window(QMainWindow):
             self.threshold_reset = False
         else:
             self.threshold_reset = True
+            
+    def sub_array_x_edit(self, input):
+        print(input)
+        if(input != None or input < self.hcam.maxWidth):            
+            self.hcam.setPropertyValue("subarray_hsize", input)
+        else:
+            self.hcam.setPropertyValue("subarray_hsize", self.hcam.maxWidth)
+        self.hcam.setSubArrayMode()
+            
+    def sub_array_y_edit(self, input):
+        print(input)
+        if(input != None or input < self.hcam.maxWidth):            
+            self.hcam.setPropertyValue("subarray_vsize", input)
+        else:
+            self.hcam.setPropertyValue("subarray_vsize", self.hcam.maxHeight)
+        self.hcam.setSubArrayMode()
+        
+    def exposure_time_edit(self, input):
+        self.hcam.setPropertyValue("exposure_time", input)
 
     #### #### user input functions #### ####
 
@@ -1502,10 +1563,13 @@ class main_window(QMainWindow):
                                     fillLevel=0, brush = (220,220,220,220)) # histogram
             self.hist_canvas[idx].plot([thresh]*2, [0, max(occ)], pen='r') # threshold line
             
-            # Checks data is below threshold if option is checked
+            # Update counts text
+            self.update_counts_label(idx)
+            
+            # Checks if counts are below threshold if option is checked
             if self.threshold_reset and self.threshold_check(idx):
-                # Apply any resets to data here
-                pass
+                self.image_handler[idx].reset_arrays() # get rid of old data
+                self.hist_canvas[idx].clear() # remove old histogram from display
     
     def threshold_check(self, index):
         im_han = self.image_handler[index]
@@ -1518,12 +1582,12 @@ class main_window(QMainWindow):
                 break
             
         # Checks if latest run is above threshold
-        if im_han.atom[run_number] > 0:
+        if im_han.atom[run_number] == 0:
             self.reset_sequence()
             return True
     
-    def reset_sequence(self):
-        print("Data above threshold. Reseting sequence")
+    def reset_sequence(self):        
+        print("Data below threshold. Reseting sequence")
         # Creates a unique file to save in tje filewatch location
         current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         time_with_code = current_time +  "\n" + str(uuid.uuid4())
@@ -1532,11 +1596,21 @@ class main_window(QMainWindow):
         file.write(time_with_code)
         file.close()
 
+    def update_counts_label(self, idx):
+        self.counts_label.setText("Counts: " + str(self.image_handler[idx].get_latest_counts()))
+
     def update_im(self, event_path):
         """Receive the event path emitted from the system event handler signal
         display the image from the file in the image canvas"""
         im_vals = self.image_handler[0].load_full_im(event_path)
         self.im_canvas.setImage(im_vals)
+        
+        # Apply colormap
+        colormap = cm.get_cmap("jet")
+        colormap._init()
+        lut = (colormap._lut * 255).view(np.ndarray)
+        self.im_canvas.setLookupTable(lut)
+        
         self.im_hist.setLevels(np.min(im_vals), np.max(im_vals))
         
     def update_plot(self, event_path):

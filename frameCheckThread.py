@@ -17,25 +17,6 @@ class FrameCheckThreadLive(threading.Thread):
         
     def stop(self):
         self.running = False
-
-class FrameCheckThreadFixed(threading.Thread):
-    """Frame check thread for fixed frame feed"""
-
-    def __init__(self, app):
-        threading.Thread.__init__(self)
-        self.app = app
-        self.running = True
-
-    def run(self):
-        while self.running:
-            success = self.app.update_image()
-            if success:
-                self.app.hcam.stopAcquisition()
-                break
-            time.sleep(.100)
-    
-    def stop(self):
-        self.running = False
             
 class FrameCheckThreadTrigger(threading.Thread):
     """Frame check thread for trigger feed"""
