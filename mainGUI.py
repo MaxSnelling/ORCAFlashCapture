@@ -238,43 +238,31 @@ class main_window(QMainWindow):
 
         stop_button = QPushButton("Stop", self)
         stop_button.resize(stop_button.sizeHint())
-        stop_button.clicked.connect(self.start_live)
+        stop_button.clicked.connect(self.stop_live)
         capture_grid.addWidget(stop_button, 1,i, 1,1)
         i+=1
         i+=1
         
-        live_text = QLabel("Trigger:", self)
+        live_text = QLabel("External Capture:", self)
         live_text.setFont(QFont(live_text.font().family(), 12))
         live_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(live_text, 1,i, 1,1)
         i+=1
         
-        internal_trigger_button = QPushButton("Internal", self)
-        internal_trigger_button.resize(internal_trigger_button.sizeHint())
-        internal_trigger_button.clicked.connect(self.set_trigger_internal)
-        capture_grid.addWidget(internal_trigger_button, 1,i, 1,1)
-        i+=1
-        
-        external_trigger_button = QPushButton("External", self)
-        external_trigger_button.resize(external_trigger_button.sizeHint())
-        external_trigger_button.clicked.connect(self.set_trigger_external)
-        capture_grid.addWidget(external_trigger_button, 1,i, 1,1)
-        i+=1
-        
         start_external_button = QPushButton("Start", self)
         start_external_button.resize(start_button.sizeHint())
-        start_external_button.clicked.connect(self.start_trigger_capture)
+        start_external_button.clicked.connect(self.start_external_capture)
         capture_grid.addWidget(start_external_button, 1,i, 1,1)
         i+=1
 
         stop_external_button = QPushButton("Stop", self)
         stop_external_button.resize(stop_button.sizeHint())
-        stop_external_button.clicked.connect(self.stop_trigger_capture)
+        stop_external_button.clicked.connect(self.stop_external_capture)
         capture_grid.addWidget(stop_external_button, 1,i, 1,1)
         i+=1
         i+=1
         
-        fixed_frame_text = QLabel("Fixed Frame:", self)
+        fixed_frame_text = QLabel("Single Frame:", self)
         fixed_frame_text.setFont(QFont(fixed_frame_text.font().family(), 12))
         fixed_frame_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(fixed_frame_text, 1,i, 1,1)
@@ -282,42 +270,8 @@ class main_window(QMainWindow):
 
         capture_button = QPushButton("Capture", self)
         capture_button.resize(capture_button.sizeHint())
-        capture_button.clicked.connect(self.fixed_frame_capture)
+        capture_button.clicked.connect(self.single_frame_capture)
         capture_grid.addWidget(capture_button, 1,i, 1,1)
-        i+=1
-        i+=1
-
-        acquisition_mode_text = QLabel("Acquisition Mode:", self)
-        acquisition_mode_text.setFont(QFont(acquisition_mode_text.font().family(), 12))
-        acquisition_mode_text.setAlignment(Qt.AlignRight)
-        capture_grid.addWidget(acquisition_mode_text, 1,i, 1,1)
-        i+=1
-
-        live_toggle = QRadioButton("Live", self)
-        live_toggle.resize(live_toggle.sizeHint())
-        live_toggle.clicked.connect(self.set_acquisition_live)
-        live_toggle.setChecked(True)
-        capture_grid.addWidget(live_toggle, 1,i, 1,1)
-        i+=1
-
-        fixed_frame_toggle = QRadioButton("Fixed Frame Count", self)
-        fixed_frame_toggle.resize(fixed_frame_toggle.sizeHint())
-        fixed_frame_toggle.clicked.connect(self.set_acquisition_fixed)
-        capture_grid.addWidget(fixed_frame_toggle, 1,i, 1,1)
-        i+=1
-
-        frame_dropbox = QComboBox(self)
-        frame_options = ["1", "2", "3", "4", "5"]
-        frame_dropbox.addItems(frame_options)
-        self.frame_selection_policy = frame_dropbox.insertPolicy()
-        self.frame_count = "1"
-        capture_grid.addWidget(frame_dropbox, 1,i, 1,1)
-        i+=1
-
-        frame_set_button = QPushButton("Set Frame Count", self)
-        frame_set_button.resize(stop_button.sizeHint())
-        frame_set_button.clicked.connect(self.set_frame_count)
-        capture_grid.addWidget(frame_set_button, 1,i, 1,1)
         i+=1
         i+=1
 
@@ -337,6 +291,11 @@ class main_window(QMainWindow):
         capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
         capture_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(capture_text, 0,0, 1,i)
+        
+        self.status_text = QLabel("Status: Stopped", self)
+        self.status_text.setFont(QFont(fixed_frame_text.font().family(), 14))
+        self.status_text.setAlignment(Qt.AlignCenter)
+        capture_grid.addWidget(self.status_text, 2,0, 1,i)
 
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
@@ -347,7 +306,7 @@ class main_window(QMainWindow):
         #                     pen=pg.mkPen(color=self.c[0],width=4))
         #capture_roi.setZValue(10)
         #capture_viewbox.addItem(capture_roi)
-        capture_grid.addWidget(capture_im_widget, 2,0, 1,i)
+        capture_grid.addWidget(capture_im_widget, 3,0, 1,i)
 
         #### tab for settings  ####
         settings_tab = QWidget()
@@ -824,49 +783,45 @@ class main_window(QMainWindow):
             return True
         else:
             return False
+        
+    def set_status_text(self, status):
+        self.status_text.setText("Status: " + status)
 
     def start_live(self):
-        if self.acquisition_mode == "run_till_abort" and self.trigger_mode == "internal":
-            self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
-            self.hcam.startAcquisition()
-            self.frame_thread.start()
+        self.hcam.setACQMode("run_till_abort")
+        self.set_trigger_internal()
+        self.set_status_text("Capturing (Live)")
+        
+        self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
+        self.hcam.startAcquisition()
+        self.frame_thread.start()
 
     def stop_live(self):
-        if self.acquisition_mode == "run_till_abort" and self.trigger_mode == "internal":
-            self.hcam.stopAcquisition()
-            self.frame_thread.stop()
+        self.hcam.stopAcquisition()
+        self.frame_thread.stop()
+        self.set_status_text("Stopped")
     
-    def start_trigger_capture(self):
-        if self.trigger_mode == "external":
-            self.frame_thread = frameCheckThread.FrameCheckThreadTrigger(self)
-            self.hcam.setACQMode("fixed_length", 1)
-            self.hcam.startAcquisition()
-            self.frame_thread.start()
+    def start_external_capture(self):
+        self.hcam.setACQMode("fixed_length", 1)
+        self.set_trigger_external()
+        self.set_status_text("Capturing (External)")
         
-    def stop_trigger_capture(self):
-        if self.trigger_mode == "external":
-            self.frame_thread.stop()
+        self.frame_thread = frameCheckThread.FrameCheckThreadTrigger(self)        
+        self.hcam.startAcquisition()
+        self.frame_thread.start()
+    
+    def stop_external_capture(self):
+        self.frame_thread.stop()
+        self.set_status_text("Stopped")
 
-    def fixed_frame_capture(self):
-        if self.acquisition_mode == "fixed_length" and self.trigger_mode == "internal": 
-            self.frame_thread = frameCheckThread.FrameCheckThreadFixed(self)
-            self.hcam.startAcquisition()
-            self.frame_thread.start()
-            time.sleep(0.5)
-            self.update_image()
-            self.hcam.stopAcquisition()
-
-    def set_acquisition_live(self):
-        self.acquisition_mode = "run_till_abort"
-        self.hcam.setACQMode(self.acquisition_mode)
-
-    def set_acquisition_fixed(self):
-        self.acquisition_mode = "fixed_length"
-        self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
-
-    def set_frame_count(self):
-        self.frame_count = self.frame_selection_policy
-        self.hcam.setACQMode(self.acquisition_mode, int(self.frame_count))
+    def single_frame_capture(self):
+        self.hcam.setACQMode("fixed_length", 1)
+        self.set_trigger_internal()        
+        
+        self.hcam.startAcquisition()
+        time.sleep(0.5)
+        self.update_image()
+        self.hcam.stopAcquisition()
         
     def set_trigger_external(self):
         self.trigger_mode = "external"
@@ -1061,7 +1016,7 @@ class main_window(QMainWindow):
                     self.stat_labels[key[:3]+'Threshold'].setText(
                             str(int(self.image_handler[idx].thresh)))
                 except ValueError: pass # user switched toggle before inputing text
-                self.plot_current_hist([x.histogram for x in self.image_handler]) # doesn't update thresh
+                #self.plot_current_hist([x.histogram for x in self.image_handler]) # doesn't update thresh
             else:
                 self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # updates thresh
 
