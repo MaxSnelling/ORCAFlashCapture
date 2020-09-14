@@ -13,7 +13,7 @@ class FrameCheckThreadLive(threading.Thread):
     def run(self):
         while self.running:
             self.app.update_image()
-            time.sleep(.100)
+            time.sleep(.500)
         
     def stop(self):
         self.running = False

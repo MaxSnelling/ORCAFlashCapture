@@ -145,6 +145,8 @@ class main_window(QMainWindow):
         self.acquisition_mode = "run_till_abort"
         self.trigger_mode = "intenal"
         self.threshold_reset = False
+        self.in_reset = False
+        self.colormap_toggle = True
 
         # validators for user input
         reg_exp = QRegExp(r'([0-9]+(\.[0-9]+)?,?)+')
@@ -231,38 +233,38 @@ class main_window(QMainWindow):
         capture_grid.addWidget(live_text, 1,i, 1,1)
         i+=1
 
-        start_button = QPushButton("Start", self)
-        start_button.resize(start_button.sizeHint())
-        start_button.clicked.connect(self.start_live)
-        capture_grid.addWidget(start_button, 1,i, 1,1)
+        start_live_button = QPushButton("Start", self)
+        start_live_button.resize(start_live_button.sizeHint())
+        start_live_button.clicked.connect(self.start_live)
+        capture_grid.addWidget(start_live_button, 1,i, 1,1)
         i+=1
 
-        stop_button = QPushButton("Stop", self)
-        stop_button.resize(stop_button.sizeHint())
-        stop_button.clicked.connect(self.stop_live)
-        capture_grid.addWidget(stop_button, 1,i, 1,1)
+        stop_live_button = QPushButton("Stop", self)
+        stop_live_button.resize(stop_live_button.sizeHint())
+        stop_live_button.clicked.connect(self.stop_live)
+        capture_grid.addWidget(stop_live_button, 1,i, 1,1)
         i+=1
         i+=1
-        
+
         live_text = QLabel("External Capture:", self)
         live_text.setFont(QFont(live_text.font().family(), 12))
         live_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(live_text, 1,i, 1,1)
         i+=1
-        
+
         start_external_button = QPushButton("Start", self)
-        start_external_button.resize(start_button.sizeHint())
+        start_external_button.resize(start_external_button.sizeHint())
         start_external_button.clicked.connect(self.start_external_capture)
         capture_grid.addWidget(start_external_button, 1,i, 1,1)
         i+=1
 
         stop_external_button = QPushButton("Stop", self)
-        stop_external_button.resize(stop_button.sizeHint())
+        stop_external_button.resize(stop_external_button.sizeHint())
         stop_external_button.clicked.connect(self.stop_external_capture)
         capture_grid.addWidget(stop_external_button, 1,i, 1,1)
         i+=1
         i+=1
-        
+
         fixed_frame_text = QLabel("Single Frame:", self)
         fixed_frame_text.setFont(QFont(fixed_frame_text.font().family(), 12))
         fixed_frame_text.setAlignment(Qt.AlignCenter)
@@ -292,56 +294,66 @@ class main_window(QMainWindow):
         capture_text.setFont(QFont(capture_text.font().family(), 24, QFont.Bold))
         capture_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(capture_text, 0,0, 1,i)
-        
+
         self.status_text = QLabel("Status: Stopped", self)
         self.status_text.setFont(QFont(fixed_frame_text.font().family(), 14))
         self.status_text.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(self.status_text, 3,0, 1,i)
-        
+
         #sub_array_label = QLabel("Sub array:", self)
         #sub_array_label.setFont(QFont(sub_array_label.font().family(), 12))
         #sub_array_label.setAlignment(Qt.AlignCenter)
         #capture_grid.addWidget(sub_array_label, 2,0, 1,1)
-        
-        xsize_label = QLabel("xsize:", self)
+
+        xsize_label = QLabel("Capture Width:", self)
         xsize_label.setFont(QFont(xsize_label.font().family(), 12))
         xsize_label.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(xsize_label, 2,0, 1,1)
-        
-        self.xsize_input = QLineEdit(self)        
+
+        self.xsize_input = QLineEdit(self)
         self.xsize_input.setValidator(int_validator)
-        self.xsize_input.textChanged[str].connect(self.sub_array_x_edit)
-        #self.xsize_input.setText(self.hcam.max_width)
+        self.xsize_input.textChanged[str].connect(self.sub_array_x_edit)        
         capture_grid.addWidget(self.xsize_input, 2,1, 1,2)
-        
-        ysize_label = QLabel("ysize:", self)
+        try:
+            self.xsize_input.setText(str(self.hcam.max_width))
+        except:
+            pass
+
+        ysize_label = QLabel("Capture Height:", self)
         ysize_label.setFont(QFont(ysize_label.font().family(), 12))
         ysize_label.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(ysize_label, 2,4, 1,1)
-        
-        self.ysize_input = QLineEdit(self)        
+
+        self.ysize_input = QLineEdit(self)
         self.ysize_input.setValidator(int_validator)
-        self.ysize_input.textChanged[str].connect(self.sub_array_y_edit)
-        #self.ysize_input.setText(self.hcam.max_height)
+        self.ysize_input.textChanged[str].connect(self.sub_array_y_edit)        
         capture_grid.addWidget(self.ysize_input, 2,5, 1,2)
-        
+        try:
+            self.ysize_input.setText(str(self.hcam.max_height))
+        except:
+            pass
+
         exposure_label = QLabel("Exposure:", self)
         exposure_label.setFont(QFont(exposure_label.font().family(), 12))
         exposure_label.setAlignment(Qt.AlignCenter)
         capture_grid.addWidget(exposure_label, 2,8, 1,1)
-        
-        self.exposure_input = QLineEdit(self)        
+
+        self.exposure_input = QLineEdit(self)
         self.exposure_input.setValidator(double_validator)
         self.exposure_input.textChanged[str].connect(self.exposure_time_edit)
-        #self.ysize_input.setText(self.hcam.getPropertyValue('exposure_time'))
-        capture_grid.addWidget(self.exposure_input, 2,9, 1,2)       
+        
+        capture_grid.addWidget(self.exposure_input, 2,9, 1,2)
+        try:
+            self.exposure_input.setText(str(self.hcam.getPropertyValue('exposure_time')[0]))
+        except:
+            pass
 
         capture_im_widget = pg.GraphicsLayoutWidget()
         capture_viewbox = capture_im_widget.addViewBox()
         self.capture_canvas = pg.ImageItem()
         capture_viewbox.addItem(self.capture_canvas)
         #capture_roi = pg.ROI([0.2,0.2], [0.6,0.6], snapSize=0.001, scaleSnap=True,
-        #                     rotatable=False, translateSnap=True, 
+        #                     rotatable=False, translateSnap=True,
         #                     pen=pg.mkPen(color=self.c[0],width=4))
         #capture_roi.setZValue(10)
         #capture_viewbox.addItem(capture_roi)
@@ -537,9 +549,9 @@ class main_window(QMainWindow):
         for i in range(len(self.hist_canvas)):
             self.hist_canvas[i].getAxis('bottom').tickFont = font
             self.hist_canvas[i].getAxis('left').tickFont = font # not doing anything...
-            hist_grid.addWidget(self.hist_canvas[i], 1+2*i,0, 1,8)  # allocate space in the grid
+            hist_grid.addWidget(self.hist_canvas[i], 1+2*i,0, 1,9)  # allocate space in the grid
         #hist_grid.addWidget(self.hist_canvas[1], 3,0, 1,8)
-        
+
         # toggle whether to fix threshold at user specified value
         self.thresh_toggle = QAction('User Threshold', self, checkable=True)
         self.thresh_toggle.triggered.connect(self.set_thresh)
@@ -549,14 +561,21 @@ class main_window(QMainWindow):
         self.hist_edits = {}
         self.hist_label_text = ['Min. Counts: ', 'Max. Counts: ', '# Bins: ', 'Threshold: ']
         for i, X in enumerate(self.atomX):
+            self.histogram_status = QLabel("Running", self)
+            self.histogram_status.setFont(QFont(self.histogram_status.font().family(), 14))
+            self.histogram_status.setAlignment(Qt.AlignCenter)
+            self.histogram_status.setStyleSheet("background-color: lightgreen") 
+            hist_grid.addWidget(self.histogram_status, i*2,0, 1,1)
+            
             for ii in range(len(self.hist_label_text)):
                 text = X + self.hist_label_text[ii]
                 new_label = QLabel(text, self)
-                hist_grid.addWidget(new_label, i*2,2*ii, 1,1)
+                hist_grid.addWidget(new_label, i*2,2*ii+1, 1,1)
                 self.hist_edits[text] = QLineEdit(self)
-                hist_grid.addWidget(self.hist_edits[text], i*2,2*ii+1, 1,1)
+                hist_grid.addWidget(self.hist_edits[text], i*2,2*ii+2, 1,1)
                 self.hist_edits[text].textChanged[str].connect(self.bins_text_edit)
                 self.hist_edits[text].setValidator(double_validator)
+            
 
 
         #### tab for current histogram statistics ####
@@ -618,8 +637,19 @@ class main_window(QMainWindow):
         # toggle to continuously plot images as they come in
         self.im_show_toggle = QPushButton('Auto-display last image', self)
         self.im_show_toggle.setCheckable(True)
+        self.im_show_toggle.setChecked(True)
         self.im_show_toggle.clicked[bool].connect(self.set_im_show)
         im_grid.addWidget(self.im_show_toggle, 0,2, 1,1)
+        
+        colormap_label = QLabel("Colormap:", self)
+        colormap_label.setFont(QFont(colormap_label.font().family(), 12))
+        colormap_label.setAlignment(Qt.AlignRight)
+        im_grid.addWidget(colormap_label, 0,3, 1,1)
+
+        colormap_checkbox = QCheckBox("")
+        colormap_checkbox.setChecked(True)
+        colormap_checkbox.stateChanged.connect(self.colormap_toggle_clicked)
+        im_grid.addWidget(colormap_checkbox, 0,4, 1,1)
 
         # centre of ROI x position
         self.roi_labels = {}
@@ -645,7 +675,7 @@ class main_window(QMainWindow):
         viewbox.addItem(self.im_canvas)
         im_grid.addWidget(im_widget, 1,0, 8,8)
         # make a ROIs that the user can drag. One for Cs, one for Rb
-        self.rois = np.array([pg.ROI([0,0], [1,1], snapSize=1, scaleSnap=True, 
+        self.rois = np.array([pg.ROI([0,0], [1,1], snapSize=1, scaleSnap=True,
                                 translateSnap=True, pen=pg.mkPen(color=self.c[0],width=4))])
         for roi in self.rois:
             roi.addScaleHandle([1,1], [0.5,0.5]) # allow user to adjust ROI size
@@ -772,6 +802,7 @@ class main_window(QMainWindow):
                     active=self.dw_mode.isChecked()) # instantiate dir watcher
             self.remove_im_files() # prompt to remove image files
             self.dir_watcher.event_handler.event_path.connect(self.update_plot) # default
+            self.dir_watcher.event_handler.event_path.connect(self.update_im)
             self.dw_status_label.setText("Running")
             # get current date
             self.date = self.dir_watcher.date
@@ -816,92 +847,100 @@ class main_window(QMainWindow):
         if latest_frame != None:
             img = np.reshape(latest_frame[0].getData(),(latest_frame[1][0], latest_frame[1][1])).T
             self.capture_canvas.setImage(img)
-            
+
             #PNG Method
             #from PIL import Image
             #rescaled = (255.0 / img.max() * (img - img.min())).astype(np.uint8)
             #im = Image.fromarray(rescaled)
             #im.save(os.path.join(self.dir_watcher.image_read_path, 'img.png'))
-            
+
             #Numpy Method
             np.save(os.path.join(self.dir_watcher.image_read_path, 'img.npy'), img)
-        
+            
+            return True
+        else:
+            return False
+
     def set_status_text(self, status):
         self.status_text.setText("Status: " + status)
 
     def start_live(self):
-        self.hcam.setACQMode("run_till_abort")
+        self.hcam.setACQMode("fixed_length", 1)
         self.set_trigger_internal()
         self.set_status_text("Capturing (Live)")
-        
-        self.frame_thread = frameCheckThread.FrameCheckThreadLive(self)
+
+        self.frame_thread = frameCheckThread.FrameCheckThreadTrigger(self)
         self.hcam.startAcquisition()
         self.frame_thread.start()
 
     def stop_live(self):
-        self.hcam.stopAcquisition()
         self.frame_thread.stop()
         self.set_status_text("Stopped")
-    
+
     def start_external_capture(self):
         self.hcam.setACQMode("fixed_length", 1)
         self.set_trigger_external()
         self.set_status_text("Capturing (External)")
-        
-        self.frame_thread = frameCheckThread.FrameCheckThreadTrigger(self)        
+
+        self.frame_thread = frameCheckThread.FrameCheckThreadTrigger(self)
         self.hcam.startAcquisition()
         self.frame_thread.start()
-    
+
     def stop_external_capture(self):
         self.frame_thread.stop()
         self.set_status_text("Stopped")
 
     def single_frame_capture(self):
         self.hcam.setACQMode("fixed_length", 1)
-        self.set_trigger_internal()        
-        
+        self.set_trigger_internal()
+
         self.hcam.startAcquisition()
-        time.sleep(0.5)
         self.update_image()
         self.hcam.stopAcquisition()
-        
+
     def set_trigger_external(self):
         self.trigger_mode = "external"
-        
-        self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__EXTERNAL) 
+
+        self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__EXTERNAL)
         self.hcam.setPropertyValue("trigger_mode", camera_try.DCAMPROP_TRIGGER_MODE__NORMAL)
-        self.hcam.setPropertyValue("trigger_polarity", camera_try.DCAMPROP_TRIGGERPOLARITY__POSITIVE)        
-    
+        self.hcam.setPropertyValue("trigger_polarity", camera_try.DCAMPROP_TRIGGERPOLARITY__POSITIVE)
+
     def set_trigger_internal(self):
         self.trigger_mode = "internal"
-        
-        self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__INTERNAL) 
-        self.hcam.setPropertyValue("trigger_mode", camera_try.DCAMPROP_TRIGGER_MODE__NORMAL)        
-        
+
+        self.hcam.setPropertyValue("trigger_source", camera_try.DCAMPROP_TRIGGERSOURCE__INTERNAL)
+        self.hcam.setPropertyValue("trigger_mode", camera_try.DCAMPROP_TRIGGER_MODE__NORMAL)
+
     def threshold_toggle_clicked(self):
         if self.threshold_reset:
             self.threshold_reset = False
         else:
             self.threshold_reset = True
-            
+    
+    def colormap_toggle_clicked(self):
+        if self.colormap_toggle:
+            self.colormap_toggle = False
+        else:
+            self.colormap_toggle = True
+
     def sub_array_x_edit(self, input):
-        print(input)
-        if(input != None or input < self.hcam.maxWidth):            
+        input = int(input)
+        if(input != None and input < self.hcam.maxWidth and input < 0):
             self.hcam.setPropertyValue("subarray_hsize", input)
         else:
-            self.hcam.setPropertyValue("subarray_hsize", self.hcam.maxWidth)
+            self.hcam.setPropertyValue("subarray_hsize", int(self.hcam.maxWidth))
         self.hcam.setSubArrayMode()
-            
+
     def sub_array_y_edit(self, input):
-        print(input)
-        if(input != None or input < self.hcam.maxWidth):            
+        input = int(input)
+        if(input != None and input < self.hcam.maxWidth and input < 0):
             self.hcam.setPropertyValue("subarray_vsize", input)
         else:
-            self.hcam.setPropertyValue("subarray_vsize", self.hcam.maxHeight)
+            self.hcam.setPropertyValue("subarray_vsize", int(self.hcam.maxHeight))
         self.hcam.setSubArrayMode()
-        
+
     def exposure_time_edit(self, input):
-        self.hcam.setPropertyValue("exposure_time", input)
+        self.hcam.setPropertyValue("exposure_time", float(input))
 
     #### #### user input functions #### ####
 
@@ -929,7 +968,7 @@ class main_window(QMainWindow):
         l = int(0.5*(xw+yw))  # want a square ROI
         # note: setting the origin as bottom left but the image has origin top left
         xc, yc = int(x0 + l//2), int(y0 + l//2)  # centre
-        
+
         new_dim = [xc, yc, l]  # new dimensions for ROI
         self.image_handler[roi_idx].set_roi(dimensions=new_dim)
         for i in range(len(new_dim)):
@@ -1038,8 +1077,8 @@ class main_window(QMainWindow):
         else:       # update both atoms
             idxs = range(len(self.atomX))
             keys = self.atomX
-            
-        if self.bin_actions[1].isChecked(): # [auto, manual, no update]            
+
+        if self.bin_actions[1].isChecked(): # [auto, manual, no update]
             for idx, key in list(map(list, zip(*(idxs, keys)))): # transpose iterables
                 # min counts, max counts, # bins
                 new_vals = [self.hist_edits[key[:3]+self.hist_label_text[0]].text(),
@@ -1065,7 +1104,7 @@ class main_window(QMainWindow):
 
                 # set the new values for the bins of the image handler
                 self.image_handler[idx].bin_array = np.linspace(min_bin, max_bin, num_bins)
-                
+
         for idx, key in list(map(list, zip(*(idxs, keys)))): # transpose iterables
             # set the new threshold if supplied
             if self.thresh_toggle.isChecked():
@@ -1562,15 +1601,19 @@ class main_window(QMainWindow):
             self.hist_canvas[idx].plot(bins, occ, stepMode=True, pen='k',
                                     fillLevel=0, brush = (220,220,220,220)) # histogram
             self.hist_canvas[idx].plot([thresh]*2, [0, max(occ)], pen='r') # threshold line
-            
+
             # Update counts text
             self.update_counts_label(idx)
-            
+
             # Checks if counts are below threshold if option is checked
             if self.threshold_reset and self.threshold_check(idx):
-                self.image_handler[idx].reset_arrays() # get rid of old data
-                self.hist_canvas[idx].clear() # remove old histogram from display
-    
+                self.histogram_status.setText("Reset")
+                self.histogram_status.setStyleSheet("background-color: red") 
+                self.in_reset = True
+            else:
+                self.histogram_status.setText("Running")
+                self.histogram_status.setStyleSheet("background-color: lightgreen") 
+
     def threshold_check(self, index):
         im_han = self.image_handler[index]
         # Finds location of the newest run
@@ -1580,50 +1623,65 @@ class main_window(QMainWindow):
                 run_number += 1
             else:
                 break
-            
+
         # Checks if latest run is above threshold
-        if im_han.atom[run_number] == 0:
+        if im_han.atom[run_number] < 1:
             self.reset_sequence()
             return True
     
-    def reset_sequence(self):        
+    def reset_data_check(self):
+        if self.in_reset:
+            self.reset_data()
+            self.in_reset = False
+    
+    def reset_data(self):
+        self.image_handler[0].reset_arrays()
+        self.hist_canvas[0].clear()   
+
+    def reset_sequence(self):
         print("Data below threshold. Reseting sequence")
         # Creates a unique file to save in tje filewatch location
         current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         time_with_code = current_time +  "\n" + str(uuid.uuid4())
-        #file = open('\\its-rds.bham.ac.uk\rdsprojects\2018\barontig01\QMix\Trigger\trigger_time.txt', 'w')
+        #file = open(r'\\its-rds.bham.ac.uk\rdsprojects\2018\barontig01\QMix\Trigger\trigger_time.txt', 'w')
         file = open('trigger_time.txt', 'w')
         file.write(time_with_code)
         file.close()
 
     def update_counts_label(self, idx):
-        self.counts_label.setText("Counts: " + str(self.image_handler[idx].get_latest_counts()))
+        self.counts_label.setText("Counts: " + str(self.image_handler[idx].get_latest_count()))
 
     def update_im(self, event_path):
         """Receive the event path emitted from the system event handler signal
-        display the image from the file in the image canvas"""
+        display the image from the file in the image canvas""" 
         im_vals = self.image_handler[0].load_full_im(event_path)
-        self.im_canvas.setImage(im_vals)
         
-        # Apply colormap
-        colormap = cm.get_cmap("jet")
-        colormap._init()
-        lut = (colormap._lut * 255).view(np.ndarray)
-        self.im_canvas.setLookupTable(lut)
-        
+        # Apply jet colormap
+        if self.colormap_toggle: 
+            colormap = cm.get_cmap("jet")           
+            colormap._init()
+            custom_lut = (colormap._lut * 255).view(np.ndarray)
+        # Apply greyscale colormap
+        else:                    
+            custom_lut = self.im_canvas.setLookupTable(im_vals)
+            
+        self.im_canvas.setImage(im_vals, lut = custom_lut)
         self.im_hist.setLevels(np.min(im_vals), np.max(im_vals))
-        
+        self.pic_size_label.setText(str(self.image_handler[0].pic_size))
+
     def update_plot(self, event_path):
         """Receive the event path emitted from the system event handler signal
         process the file in the event path with the image handler and update
         the figure"""
+        self.reset_data_check()
+        
         # add the count
         t1 = time.time()
         for im_han in self.image_handler:
             im_han.process(event_path)
         t2 = time.time()
         self.int_time = t2 - t1
-
+        
         # display the name of the most recent file
         self.recent_label.setText('Just processed: '+os.path.basename(event_path))
         self.plot_current_hist([x.hist_and_thresh for x in self.image_handler]) # update the displayed plot
@@ -1634,12 +1692,14 @@ class main_window(QMainWindow):
         process the file in the event path with the image handler and update
         the figure but without changing the threshold value"""
         # add the count
+        self.reset_data_check()
+        
         t1 = time.time()
         for im_han in self.image_handler:
             im_han.process(event_path)
         t2 = time.time()
         self.int_time = t2 - t1
-
+        
         # display the name of the most recent file
         self.recent_label.setText('Just processed: '+os.path.basename(event_path))
         self.plot_current_hist([x.histogram for x in self.image_handler]) # update the displayed plot

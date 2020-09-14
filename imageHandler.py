@@ -66,7 +66,7 @@ class image_handler:
         self.xc = 0                     # ROI centre x position 
         self.yc = 0                     # ROI centre y position
         self.roi_size =  1              # ROI length in pixels. default 1 takes top left pixel
-        self.pic_size = 10             # number of pixels in an image
+        self.pic_size = 10              # number of pixels in an image
         self.thresh = 1                 # initial threshold for atom detection
         self.im_num = 0                 # number of images processed
         self.im_vals = np.array([])     # the data from the last image is accessible to an image_handler instance
@@ -93,17 +93,16 @@ class image_handler:
         
     def load_full_im(self, im_name):
         """return an array with the values of the image"""
-        print(im_name)
-        print(self.pic_size)
-        #return np.loadtxt(im_name, delimiter=None,
-        #                      usecols=range(1,self.pic_size+1))
+        
+        #Numpy Method
+        image_array = np.loadtxt(im_name)
         
         #PNG Method
         #image = Image.open(im_name)
-        #return np.asarray(image)
-        
-        #Numpy Method
-        return np.load(im_name)
+        #image_array = np.asarray(image)
+    
+        self.pic_size = image_array.shape[0] * image_array.shape[1]
+        return image_array
         
     def process(self, im_name):
         """Get the data from an image """
@@ -156,6 +155,9 @@ class image_handler:
         self.mid_count[self.im_num] = full_im[self.xc, self.yc]
         self.xc_list[self.im_num], self.yc_list[self.im_num] = np.unravel_index(np.argmax(full_im), full_im.shape)
         self.im_num += 1
+        
+    def get_latest_count(self):
+        return self.counts[self.im_num-1]
             
     def get_fidelity(self, thresh=None):
         """Calculate the fidelity assuming a normal distribution for peak 1
